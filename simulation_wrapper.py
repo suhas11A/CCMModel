@@ -4,7 +4,8 @@ import json
 import networkx as nx
 from collections import defaultdict
 from graph_utils import create_port_labeled_graph, randomize_ports
-from agent import Agent, run_simulation
+import agent          # existing algo
+import agent1         # new parallel greedy algo
 import random
 import argparse # Import argparse for command-line arguments
 import datetime # Import datetime for timestamps
@@ -45,6 +46,7 @@ agent_count         = _get_or_default("agent_count",         DEFAULT_AGENT_COUNT
 starting_positions  = _get_or_default("starting_positions",  DEFAULT_STARTING_POSITIONS)
 seed                = _get_or_default("seed",                DEFAULT_SEED)
 rounds              = _get_or_default("rounds",              DEFAULT_ROUNDS)
+algorithm           = _get_or_default("algorithm",           "near_linear")
 
 
 # --- Graph and Agent Initialization ---
@@ -62,15 +64,20 @@ number_of_starting_positions = min(starting_positions, G.number_of_nodes()) if G
 # Ensure we have at least one node to start on if nodes > 0
 start_nodes = random.sample(list(G.nodes()), number_of_starting_positions) if number_of_starting_positions > 0 else (list(G.nodes())[0:1] if G.number_of_nodes() > 0 else [])
 
+if algorithm == "parallel_greedy":
+    AgentClass = agent1.Agent
+else:
+    AgentClass = agent.Agent
+
 if G.number_of_nodes() == 0:
      print("Error: Graph has 0 nodes, cannot initialize agents.", file=sys.stderr)
      agents = []
 elif len(start_nodes) == 0:
      print("Warning: No starting nodes selected (perhaps nodes=0 or starting_positions=0). Initializing agents at node 0 if available.", file=sys.stderr)
      start_nodes = [list(G.nodes())[0]] # Fallback to node 0 if exists
-     agents = [Agent(i, start_nodes[0]) for i in range(agent_count)] if G.number_of_nodes() > 0 else []
+     agents = [AgentClass(i, start_nodes[0]) for i in range(agent_count)] if G.number_of_nodes() > 0 else []
 else:
-     agents = [Agent(i, random.choice(start_nodes)) for i in range(agent_count)]
+     agents = [AgentClass(i, random.choice(start_nodes)) for i in range(agent_count)]
 
 if __name__ == "__main__": # Only print agent info when run directly
     print(f"Initialized {len(agents)} agents at nodes: {start_nodes}", file=sys.stderr)
@@ -81,9 +88,14 @@ if __name__ == "__main__": # Only print agent info when run directly
 all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = [], [], [], [], []
 
 if agents and rounds > 0 and G.number_of_nodes() > 0:
-    # run_simulation returns the collected data
-    all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = run_simulation(
-        G, agents, max_degree, rounds, start_nodes # Pass start_nodes if needed by run_simulation
+    # pick the correct simulation module
+    if algorithm == "parallel_greedy":
+        sim_mod = agent1
+    else:
+        sim_mod = agent
+
+    all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = sim_mod.run_simulation(
+        G, agents, max_degree, rounds, start_nodes
     )
     if __name__ == "__main__": # Only print simulation finished info when run directly
         print(f'Simulation finished after {len(all_positions) - 1} recorded steps.', file=sys.stderr)
