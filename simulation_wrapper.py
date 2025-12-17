@@ -4,8 +4,8 @@ import json
 import networkx as nx
 from collections import defaultdict
 from graph_utils import create_port_labeled_graph, randomize_ports
-import agent          # existing algo
-import agent1         # new algo
+import agent_drop_freeze
+import agent_help_scouts
 import random
 import argparse # Import argparse for command-line arguments
 import datetime # Import datetime for timestamps
@@ -102,9 +102,9 @@ number_of_starting_positions = min(starting_positions, G.number_of_nodes()) if G
 start_nodes = random.sample(list(G.nodes()), number_of_starting_positions) if number_of_starting_positions > 0 else (list(G.nodes())[0:1] if G.number_of_nodes() > 0 else [])
 
 if algorithm == "Help by Scouts":
-    AgentClass = agent1.Agent
+    AgentClass = agent_help_scouts.Agent
 else:
-    AgentClass = agent.Agent
+    AgentClass = agent_drop_freeze.Agent
 
 if G.number_of_nodes() == 0:
      print("Error: Graph has 0 nodes, cannot initialize agents.", file=sys.stderr)
@@ -131,9 +131,9 @@ all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = 
 if agents and rounds > 0 and G.number_of_nodes() > 0:
     # pick the correct simulation module
     if algorithm == "Help by Scouts":
-        sim_mod = agent1
+        sim_mod = agent_help_scouts
     else:
-        sim_mod = agent
+        sim_mod = agent_drop_freeze
 
     all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = sim_mod.run_simulation(
         G, agents, max_degree, rounds, start_nodes

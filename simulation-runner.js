@@ -11,8 +11,8 @@ export async function runSimulation(py, nodes, max_degree, agents, rounds, seed,
   // Load all Python modules and helper script into Pyodide FS
   const pythonFiles = [
     'graph_utils.py',
-    'agent.py',
-    'agent1.py',      // NEW: parallel greedy algorithm
+    'agent_drop_freeze.py',
+    'agent_help_scouts.py',      // NEW: parallel greedy algorithm
     'simulation_wrapper.py'  // external script with core logic
   ];
   await Promise.all(pythonFiles.map(f => loadPyFile(py, f)));
