@@ -7,7 +7,7 @@ async function loadPyFile(py, fname) {
   py.FS.writeFile(fname, text);
 }
 
-export async function runSimulation(py, nodes, max_degree, agents, rounds, seed, starting_positions, algorithm = "near_linear") {
+export async function runSimulation(py, nodes, max_degree, agents, rounds, seed, starting_positions, algorithm = "Help by Scouts") {
   // Load all Python modules and helper script into Pyodide FS
   const pythonFiles = [
     'graph_utils.py',

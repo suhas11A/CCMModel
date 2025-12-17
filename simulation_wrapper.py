@@ -5,12 +5,45 @@ import networkx as nx
 from collections import defaultdict
 from graph_utils import create_port_labeled_graph, randomize_ports
 import agent          # existing algo
-import agent1         # new parallel greedy algo
+import agent1         # new algo
 import random
 import argparse # Import argparse for command-line arguments
 import datetime # Import datetime for timestamps
 import os     # Import os for path manipulation
 import sys    # Import sys for error output
+
+def create_specific_example_graph():
+    G = nx.Graph()
+    # nodes
+    G.add_nodes_from([0, 1, 2, 3])
+
+    # K4 edges
+    edges = [
+        (0, 1), (0, 2), (0, 3),
+        (1, 2), (1, 3),
+        (2, 3)
+    ]
+    G.add_edges_from(edges)
+
+    # port_map: for each node, assign neighbors to local ports 0..deg-1
+    for u in G.nodes():
+        nbrs = sorted(G.neighbors(u))
+        G.nodes[u]['port_map'] = {i: v for i, v in enumerate(nbrs)}
+
+    for u, v in G.edges():
+        # port index at u that goes to v
+        pu = [p for p, w in G.nodes[u]['port_map'].items() if w == v][0]
+        pv = [p for p, w in G.nodes[v]['port_map'].items() if w == u][0]
+        G[u][v][f"port_{u}"] = pu
+        G[u][v][f"port_{v}"] = pv
+
+    # other node attributes expected by run_simulation
+    for u in G.nodes():
+        G.nodes[u]['agents'] = set()
+        G.nodes[u]['settled_agent'] = None
+
+    return G
+
 
 # Default Parameters (can now be potentially overridden via CLI in a future version)
 DEFAULT_NODES = 13
@@ -46,14 +79,18 @@ agent_count         = _get_or_default("agent_count",         DEFAULT_AGENT_COUNT
 starting_positions  = _get_or_default("starting_positions",  DEFAULT_STARTING_POSITIONS)
 seed                = _get_or_default("seed",                DEFAULT_SEED)
 rounds              = _get_or_default("rounds",              DEFAULT_ROUNDS)
-algorithm           = _get_or_default("algorithm",           "near_linear")
+algorithm           = _get_or_default("algorithm",           "Help by Scouts")
 
 
 # --- Graph and Agent Initialization ---
-G = create_port_labeled_graph(nodes, max_degree, seed)
-if __name__ == "__main__": # Only print graph info when run directly
-    print(f'Graph created with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges', file=sys.stderr)
-
+if seed==137:
+    G = create_specific_example_graph()
+    if __name__ == "__main__":
+        print("Using fixed 7-node example graph (0-1-2 and 0-3-4).", file=sys.stderr)
+else:
+    G = create_port_labeled_graph(nodes, max_degree, seed)
+    if __name__ == "__main__":
+        print(f'Graph created with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges', file=sys.stderr)
 randomize_ports(G, seed)
 
 for node in G.nodes():
@@ -64,7 +101,7 @@ number_of_starting_positions = min(starting_positions, G.number_of_nodes()) if G
 # Ensure we have at least one node to start on if nodes > 0
 start_nodes = random.sample(list(G.nodes()), number_of_starting_positions) if number_of_starting_positions > 0 else (list(G.nodes())[0:1] if G.number_of_nodes() > 0 else [])
 
-if algorithm == "parallel_greedy":
+if algorithm == "Help by Scouts":
     AgentClass = agent1.Agent
 else:
     AgentClass = agent.Agent
@@ -77,7 +114,11 @@ elif len(start_nodes) == 0:
      start_nodes = [list(G.nodes())[0]] # Fallback to node 0 if exists
      agents = [AgentClass(i, start_nodes[0]) for i in range(agent_count)] if G.number_of_nodes() > 0 else []
 else:
-     agents = [AgentClass(i, random.choice(start_nodes)) for i in range(agent_count)]
+    if seed==137:
+        start_nodes = [0]
+        agents = [AgentClass(i, 0) for i in range(agent_count)]
+    else:
+        agents = [AgentClass(i, random.choice(start_nodes)) for i in range(agent_count)]
 
 if __name__ == "__main__": # Only print agent info when run directly
     print(f"Initialized {len(agents)} agents at nodes: {start_nodes}", file=sys.stderr)
@@ -89,7 +130,7 @@ all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = 
 
 if agents and rounds > 0 and G.number_of_nodes() > 0:
     # pick the correct simulation module
-    if algorithm == "parallel_greedy":
+    if algorithm == "Help by Scouts":
         sim_mod = agent1
     else:
         sim_mod = agent
