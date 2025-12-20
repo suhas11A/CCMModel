@@ -3,7 +3,7 @@ from collections import defaultdict
 AgentStatus = {
     "SETTLED": 0,
     "UNSETTLED": 1,
-    "PROBING": 2,
+    "SETTLED_WAIT": 2,
 }
 
 NodeStatus = {
@@ -72,6 +72,19 @@ def _snapshot(all_positions, all_statuses, all_leaders, all_levels, all_node_sta
     all_levels.append((label, [a.state["level"] for a in agents]))
     return positions, statuses
 
+def _init_ports(G):
+    # Deterministic local ports + inverse map (neighbor -> port)
+    for u in G.nodes:
+        nbrs = sorted(G.neighbors(u))
+        G.nodes[u]["port_map"] = {i: v for i, v in enumerate(nbrs)}
+        G.nodes[u]["nbr_to_port"] = {v: i for i, v in enumerate(nbrs)}
+
+    # (Optional) keep edge attrs consistent if your visualizer expects them
+    for u, v in G.edges:
+        G[u][v][f"port_{u}"] = G.nodes[u]["nbr_to_port"][v]
+        G[u][v][f"port_{v}"] = G.nodes[v]["nbr_to_port"][u]
+
+
 
 # ----------------------------------------------------------------------
 # CORE STEPS (probe out, probe back, move out)
@@ -103,7 +116,7 @@ def _probe_out(G, node_to_agents):
             a.probe_home = u
             a.probe_port = port
             a.probe_result_empty = None
-            a.state["status"] = AgentStatus["PROBING"]
+            a.state["status"] = AgentStatus["SETTLED_WAIT"]
             moves.append((a, u, v, port))
 
     # execute moves simultaneously
@@ -122,7 +135,7 @@ def _probe_back(G, agents):
     moves = []  # list of (agent, src, home)
 
     for a in agents:
-        if a.state["status"] != AgentStatus["PROBING"]:
+        if a.state["status"] != AgentStatus["SETTLED_WAIT"]:
             continue
         src = a.currentnode
         # "empty" means no settled agent at that node
@@ -142,113 +155,163 @@ def _probe_back(G, agents):
         G.nodes[home]["agents"].add(a)
         a.state["status"] = AgentStatus["UNSETTLED"]
 
-
-def _move_out(G, node_to_agents):
+def _break_parent_cycles(G, seeds):
     """
-    At each node:
-      - If node has no settled_agent and has >=1 unsettled agent, settle exactly one (drop one).
-      - Using probe results, move the remaining unsettled agents to distinct EMPTY neighbors (one per empty port).
-      - Everybody moves together (simultaneously), except the one dropped/settled.
+    Ensure settled-agent parent pointers form an acyclic forest.
+    If a cycle is found, break it deterministically by cutting the parent_port
+    of the settled agent with the largest agent-id in that cycle.
     """
-    planned_moves = []  # list of (agent, src, dst)
+    processed = set()
 
-    for u, agents_here in node_to_agents.items():
-        settled = G.nodes[u].get("settled_agent")
+    for start in seeds:
+        cur = start
+        path = []
+        idx = {}
 
-        # unsettled visitors at u (exclude the settled agent)
-        unsettled = [a for a in agents_here if a is not settled and a.state["status"] == AgentStatus["UNSETTLED"]]
-        if not unsettled:
-            continue
-
-        unsettled.sort(key=lambda a: a.id)
-
-        # collect empty ports discovered by probes (unique, sorted)
-        empty_ports = []
-        for p, nbr in G.nodes[u]["port_map"].items():
-            if G.nodes[nbr].get("settled_agent") is None:
-                empty_ports.append(p)
-        empty_ports.sort()
-
-        # clear probe memory so stale results don’t leak into the next cycle
-        for a in unsettled:
-            a.probe_port = None
-            a.probe_result_empty = None
-            a.probe_home = None
-
-        # drop/settle exactly one IF the node is currently empty
-        if settled is None:
-            to_settle = unsettled.pop(0)
-            to_settle.state["status"] = AgentStatus["SETTLED"]
-            to_settle.parent_port = to_settle.entry_pin 
-            to_settle.next_port_to_try = 0
-            G.nodes[u]["settled_agent"] = to_settle
-            G.nodes[u]["node_status"] = NodeStatus["OCCUPIED"]
-
-        # After settling, 'unsettled' = movers that will leave
-        if not unsettled:
-            continue
-
-
-        # ---- PUT DFS CHOICE + MOVE-TOGETHER HERE ----
-        sa = G.nodes[u]["settled_agent"]   # the settled agent at u holds DFS memory
-        deg = G.degree[u]
-
-        chosen_port = None
-        while sa.next_port_to_try < deg:
-            p = sa.next_port_to_try
-            sa.next_port_to_try += 1
-
-            # don't go back to parent while exploring forward
-            if sa.parent_port is not None and p == sa.parent_port:
-                continue
-
-            # only choose ports that probes reported as empty
-            nbr = G.nodes[u]["port_map"].get(p)
-            if nbr is not None and G.nodes[nbr].get("settled_agent") is None:
-                chosen_port = p
+        while True:
+            if cur in idx:
+                cycle_nodes = path[idx[cur]:]
+                # deterministically choose a breaker
+                breaker = max(cycle_nodes, key=lambda n: G.nodes[n]["settled_agent"].id)
+                G.nodes[breaker]["settled_agent"].parent_port = None
                 break
 
-        # if no forward option, backtrack
-        if chosen_port is None:
-            if sa.parent_port is None:
-                continue   # root fully explored, nowhere to go
-            chosen_port = sa.parent_port
+            if cur in processed:
+                break
 
-        v = G.nodes[u]["port_map"].get(chosen_port)
-        if v is None:
+            idx[cur] = len(path)
+            path.append(cur)
+
+            sa = G.nodes[cur].get("settled_agent")
+            if sa is None or sa.parent_port is None:
+                break
+
+            parent = G.nodes[cur]["port_map"].get(sa.parent_port)
+            if parent is None:
+                # sanitize invalid parent pointer
+                sa.parent_port = None
+                break
+
+            cur = parent
+
+        processed.update(path)
+
+
+def _move_out(G, node_to_agents):
+    planned_moves = []
+    unsettled_by_node = {}
+    AS = AgentStatus
+    NS = NodeStatus
+
+    # Collect unsettled movers at each node (excluding the local settled agent object)
+    for u, agents_here in node_to_agents.items():
+        settled = G.nodes[u].get("settled_agent")
+        movers = [a for a in agents_here
+                  if a is not settled and a.state["status"] == AS["UNSETTLED"]]
+        if movers:
+            movers.sort(key=lambda a: a.id)
+            unsettled_by_node[u] = movers
+
+    # Phase 1: settle one agent at any empty node that currently has movers
+    newly_settled_nodes = set()
+    for u, movers in unsettled_by_node.items():
+        if G.nodes[u].get("settled_agent") is None and movers:
+            to_settle = movers.pop(0)
+            to_settle.state["status"] = AS["SETTLED"]
+            to_settle.next_port_to_try = 0
+
+            # Parent is the port used to enter this node (if valid)
+            to_settle.parent_port = to_settle.entry_pin
+            if to_settle.parent_port not in G.nodes[u]["port_map"]:
+                to_settle.parent_port = None
+
+            G.nodes[u]["settled_agent"] = to_settle
+            G.nodes[u]["node_status"] = NS["OCCUPIED"]
+            newly_settled_nodes.add(u)
+
+    # Break accidental parent cycles (your existing helper)
+    _break_parent_cycles(G, newly_settled_nodes)
+
+    # Phase 2: route remaining movers
+    for u, movers in unsettled_by_node.items():
+        if not movers:
             continue
 
-        # MOVE TOGETHER: every unsettled mover goes to the SAME neighbor v
-        for a in unsettled:
+        sa = G.nodes[u].get("settled_agent")
+        if sa is None:
+            continue
+
+        port_map = G.nodes[u]["port_map"]
+        ports = sorted(port_map.keys())
+        if not ports:
+            continue
+
+        # (A) If a mover probed an empty neighbor, send it there directly
+        remaining = []
+        for a in movers:
+            used = False
+            if (a.probe_home == u and a.probe_result_empty is True and a.probe_port in port_map):
+                v = port_map[a.probe_port]
+                # re-check still empty (someone else could have settled there this round)
+                if v is not None and G.nodes[v].get("settled_agent") is None:
+                    planned_moves.append((a, u, v))
+                    used = True
+
+            if not used:
+                remaining.append(a)
+
+        movers = remaining
+        if not movers:
+            continue
+
+        # (B) Otherwise rotor-route remaining movers over ALL ports (wraps around)
+        d = len(ports)
+        for a in movers:
+            idx = sa.next_port_to_try % d
+            p = ports[idx]
+            sa.next_port_to_try = (idx + 1) % d
+
+            v = port_map.get(p)
+            if v is None:
+                continue
+
             planned_moves.append((a, u, v))
 
-
-    # execute moves simultaneously
+    # Execute moves
     for a, u, v in planned_moves:
-        back_port = G[u][v][f"port_{v}"]
+        back_port = G.nodes[v]["nbr_to_port"][u]
         G.nodes[u]["agents"].remove(a)
+
         a.currentnode = v
         a.pin = back_port
         a.entry_pin = back_port
-        G.nodes[v]["agents"].add(a)
 
+        # Clear probe state once we commit a move (probe is per-round info)
+        a.probe_home = None
+        a.probe_port = None
+        a.probe_result_empty = None
+
+        G.nodes[v]["agents"].add(a)
 
 # ----------------------------------------------------------------------
 # MAIN SIMULATION (signature must match simulation_wrapper.py)
 # ----------------------------------------------------------------------
 def run_simulation(G, agents, max_degree, rounds, starting_positions):
-    # Ensure expected node fields exist
     for node in G.nodes():
-        if "agents" not in G.nodes[node]:
-            G.nodes[node]["agents"] = set()
-        if "settled_agent" not in G.nodes[node]:
-            G.nodes[node]["settled_agent"] = None
-        if "node_status" not in G.nodes[node]:
-            G.nodes[node]["node_status"] = NodeStatus["EMPTY"]
+        G.nodes[node]["agents"] = set()
+        G.nodes[node]["settled_agent"] = None
+        G.nodes[node]["node_status"] = NodeStatus["EMPTY"]
+    _init_ports(G)
+    for a in agents:
+        a.state["status"] = AgentStatus["UNSETTLED"]
+        a.probe_home = None
+        a.probe_port = None
+        a.probe_result_empty = None
+        a.pin = None
+        a.parent_port = None
+        a.next_port_to_try = 0
+        a.entry_pin = None
 
-    # Place agents (wrapper usually already does this; we ensure sets are correct)
-    for node in G.nodes():
-        G.nodes[node]["agents"].clear()
     for a in agents:
         G.nodes[a.currentnode]["agents"].add(a)
 
