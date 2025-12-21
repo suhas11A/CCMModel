@@ -129,16 +129,19 @@ def _probe_out(G, node_to_agents):
         unsettled = [a for a in agents_here if a is not settled and a.state["status"] == AgentStatus["UNSETTLED"]]
         if not unsettled:
             continue
-
-        deg = G.degree[u]
-        if deg == 0:
-            continue
-
         unsettled.sort(key=lambda a: a.id)
         for a in unsettled:
             a.probe_home = None
             a.probe_port = None
             a.probe_result_empty = None
+
+        if settled is None and len(unsettled) == 1:
+            continue
+
+        deg = G.degree[u]
+        if deg == 0:
+            continue
+
         # assign first min(len(unsettled), deg) agents to ports 0..deg-1
         sa = G.nodes[u].get("settled_agent")
         ports = _ordered_ports(G, u)
