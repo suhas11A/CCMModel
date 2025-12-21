@@ -19,7 +19,6 @@ class Agent:
         self.id = id
         self.currentnode = initial_node
 
-        # keep these fields so the wrapper / visualizer doesn’t break
         self.state = {
             "status": AgentStatus["UNSETTLED"],
             "level": 0,
@@ -42,6 +41,34 @@ class Agent:
 # ----------------------------------------------------------------------
 # UTIL
 # ----------------------------------------------------------------------
+
+def _ordered_ports(G, u):
+    port_map = G.nodes[u]["port_map"]
+    nbr_to_port_u = G.nodes[u]["nbr_to_port"]
+
+    def rank(p):
+        v = port_map[p]
+        # arrival port at v that leads back to u (0-based)
+        p_vu = G.nodes[v]["nbr_to_port"][u]
+
+        local_is_p1  = (p == 0)      # paper port 1
+        remote_is_p1 = (p_vu == 0)   # paper port 1 at the other end
+
+        # tp1: local != 1, remote == 1  (=> local !=0, remote==0)
+        if (not local_is_p1) and remote_is_p1:
+            return (0, p)  # highest
+
+        # t11 or t1q: local == 1 (=> local==0), regardless of remote
+        if local_is_p1:
+            return (1, p)
+
+        # tpq: local != 1 and remote != 1
+        return (2, p)
+
+    return sorted(port_map.keys(), key=rank)
+
+
+
 def _positions_and_statuses(agents):
     return [a.currentnode for a in agents], [a.state["status"] for a in agents]
 
@@ -109,7 +136,12 @@ def _probe_out(G, node_to_agents):
 
         unsettled.sort(key=lambda a: a.id)
         # assign first min(len(unsettled), deg) agents to ports 0..deg-1
-        for port, a in enumerate(unsettled[:deg]):
+        sa = G.nodes[u].get("settled_agent")
+        ports = _ordered_ports(G, u)
+
+        start = sa.next_port_to_try if sa is not None else 0
+        ports_to_probe = ports[start:]  # probe only remaining ports
+        for a, port in zip(unsettled, ports_to_probe):
             v = G.nodes[u]["port_map"].get(port)
             if v is None:
                 continue
@@ -164,19 +196,30 @@ def _break_parent_cycles(G, seeds):
     processed = set()
 
     for start in seeds:
+        if start in processed:
+            continue
+
         cur = start
         path = []
         idx = {}
 
         while True:
-            if cur in idx:
-                cycle_nodes = path[idx[cur]:]
-                # deterministically choose a breaker
-                breaker = max(cycle_nodes, key=lambda n: G.nodes[n]["settled_agent"].id)
-                G.nodes[breaker]["settled_agent"].parent_port = None
+            if cur in processed:
                 break
 
-            if cur in processed:
+            if cur in idx:
+                # Found a cycle: nodes from idx[cur] onward
+                cycle_nodes = path[idx[cur]:]
+
+                def key(n):
+                    sa = G.nodes[n].get("settled_agent")
+                    aid = sa.id if sa is not None else -1
+                    return (aid, n)
+
+                cut_node = max(cycle_nodes, key=key)
+                sa_cut = G.nodes[cut_node].get("settled_agent")
+                if sa_cut is not None:
+                    sa_cut.parent_port = None
                 break
 
             idx[cur] = len(path)
@@ -222,6 +265,9 @@ def _move_out(G, node_to_agents):
 
             # Parent is the port used to enter this node (if valid)
             to_settle.parent_port = to_settle.entry_pin
+            pnode = G.nodes[u]["port_map"].get(to_settle.parent_port)
+            if pnode is None:
+                to_settle.parent_port = None
             if to_settle.parent_port not in G.nodes[u]["port_map"]:
                 to_settle.parent_port = None
 
@@ -229,10 +275,11 @@ def _move_out(G, node_to_agents):
             G.nodes[u]["node_status"] = NS["OCCUPIED"]
             newly_settled_nodes.add(u)
 
-    # Break accidental parent cycles (your existing helper)
-    _break_parent_cycles(G, newly_settled_nodes)
+    # Break accidental parent cycles
+    all_settled = {n for n in G.nodes() if G.nodes[n].get("settled_agent") is not None}
+    _break_parent_cycles(G, all_settled)
 
-    # Phase 2: route remaining movers
+    # Phase 2: GROUP DFS move (your version)
     for u, movers in unsettled_by_node.items():
         if not movers:
             continue
@@ -242,42 +289,82 @@ def _move_out(G, node_to_agents):
             continue
 
         port_map = G.nodes[u]["port_map"]
-        ports = sorted(port_map.keys())
+        ports = _ordered_ports(G, u)
         if not ports:
             continue
 
-        # (A) If a mover probed an empty neighbor, send it there directly
-        remaining = []
-        for a in movers:
-            used = False
-            if (a.probe_home == u and a.probe_result_empty is True and a.probe_port in port_map):
-                v = port_map[a.probe_port]
-                # re-check still empty (someone else could have settled there this round)
-                if v is not None and G.nodes[v].get("settled_agent") is None:
-                    planned_moves.append((a, u, v))
-                    used = True
+        def port_leads_to_empty(p):
+            v_try = port_map.get(p)
+            return (v_try is not None) and (G.nodes[v_try].get("settled_agent") is None)
 
-            if not used:
-                remaining.append(a)
+        cursor_idx = sa.next_port_to_try if sa.next_port_to_try is not None else 0
+        port_to_idx = {p:i for i,p in enumerate(ports)}
 
-        movers = remaining
-        if not movers:
+        # 1) Prefer ports confirmed empty by probe results (this round)
+        probe_empty_ports = []
+        seen = set()
+
+        scouts = list(movers)
+        if u in newly_settled_nodes:
+            scouts.append(sa)
+
+        for a in scouts:
+            if a.probe_home != u or a.probe_result_empty is not True:
+                continue
+            p = a.probe_port
+            if p in port_map and p not in seen and port_leads_to_empty(p):
+                seen.add(p)
+                probe_empty_ports.append(p)
+
+        probe_empty_ports.sort(key=lambda p: port_to_idx.get(p, 10**9))
+
+        chosen_port = None
+
+        # DFS: choose first candidate >= cursor
+        for p in probe_empty_ports:
+            i = port_to_idx.get(p)
+            if i is not None and i >= cursor_idx:
+                chosen_port = p
+                break
+
+        # 2) Fallback: choose any currently-empty neighbor in DFS order >= cursor
+        # if chosen_port is None:
+        #     for i in range(cursor_idx, len(ports)):
+        #         p = ports[i]
+        #         if port_leads_to_empty(p):
+        #             chosen_port = p
+        #             break
+
+        # Forward DFS move: ALL movers go together
+        if chosen_port is not None:
+            v = port_map[chosen_port]
+            sa.next_port_to_try = port_to_idx[chosen_port] + 1
+            for a in movers:
+                planned_moves.append((a, u, v))
             continue
 
-        # (B) Otherwise rotor-route remaining movers over ALL ports (wraps around)
-        d = len(ports)
-        for a in movers:
-            idx = sa.next_port_to_try % d
-            p = ports[idx]
-            sa.next_port_to_try = (idx + 1) % d
 
-            v = port_map.get(p)
-            if v is None:
-                continue
+        if chosen_port is None:
+            probed_ports = [
+                a.probe_port
+                for a in scouts
+                if a.probe_home == u and a.probe_port is not None
+            ]
+            probed_count = len(set(probed_ports))
+            sa.next_port_to_try = min(len(ports), cursor_idx + probed_count)
+            if sa.next_port_to_try < len(ports):
+                continue  
 
-            planned_moves.append((a, u, v))
 
-    # Execute moves
+        # 3) No empty neighbor left -> backtrack to parent as a group
+        if sa.parent_port is not None and sa.parent_port in port_map:
+            v = port_map[sa.parent_port]
+            sa.next_port_to_try = len(ports)  # mark exhausted
+            for a in movers:
+                planned_moves.append((a, u, v))
+        # else: root exhausted -> movers stay
+
+    # Execute moves (your original logic)
     for a, u, v in planned_moves:
         back_port = G.nodes[v]["nbr_to_port"][u]
         G.nodes[u]["agents"].remove(a)
