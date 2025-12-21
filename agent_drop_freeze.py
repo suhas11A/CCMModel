@@ -135,6 +135,10 @@ def _probe_out(G, node_to_agents):
             continue
 
         unsettled.sort(key=lambda a: a.id)
+        for a in unsettled:
+            a.probe_home = None
+            a.probe_port = None
+            a.probe_result_empty = None
         # assign first min(len(unsettled), deg) agents to ports 0..deg-1
         sa = G.nodes[u].get("settled_agent")
         ports = _ordered_ports(G, u)
@@ -187,59 +191,6 @@ def _probe_back(G, agents):
         G.nodes[home]["agents"].add(a)
         a.state["status"] = AgentStatus["UNSETTLED"]
 
-def _break_parent_cycles(G, seeds):
-    """
-    Ensure settled-agent parent pointers form an acyclic forest.
-    If a cycle is found, break it deterministically by cutting the parent_port
-    of the settled agent with the largest agent-id in that cycle.
-    """
-    processed = set()
-
-    for start in seeds:
-        if start in processed:
-            continue
-
-        cur = start
-        path = []
-        idx = {}
-
-        while True:
-            if cur in processed:
-                break
-
-            if cur in idx:
-                # Found a cycle: nodes from idx[cur] onward
-                cycle_nodes = path[idx[cur]:]
-
-                def key(n):
-                    sa = G.nodes[n].get("settled_agent")
-                    aid = sa.id if sa is not None else -1
-                    return (aid, n)
-
-                cut_node = max(cycle_nodes, key=key)
-                sa_cut = G.nodes[cut_node].get("settled_agent")
-                if sa_cut is not None:
-                    sa_cut.parent_port = None
-                break
-
-            idx[cur] = len(path)
-            path.append(cur)
-
-            sa = G.nodes[cur].get("settled_agent")
-            if sa is None or sa.parent_port is None:
-                break
-
-            parent = G.nodes[cur]["port_map"].get(sa.parent_port)
-            if parent is None:
-                # sanitize invalid parent pointer
-                sa.parent_port = None
-                break
-
-            cur = parent
-
-        processed.update(path)
-
-
 def _move_out(G, node_to_agents):
     planned_moves = []
     unsettled_by_node = {}
@@ -275,10 +226,6 @@ def _move_out(G, node_to_agents):
             G.nodes[u]["node_status"] = NS["OCCUPIED"]
             newly_settled_nodes.add(u)
 
-    # Break accidental parent cycles
-    all_settled = {n for n in G.nodes() if G.nodes[n].get("settled_agent") is not None}
-    _break_parent_cycles(G, all_settled)
-
     # Phase 2: GROUP DFS move (your version)
     for u, movers in unsettled_by_node.items():
         if not movers:
@@ -292,10 +239,6 @@ def _move_out(G, node_to_agents):
         ports = _ordered_ports(G, u)
         if not ports:
             continue
-
-        def port_leads_to_empty(p):
-            v_try = port_map.get(p)
-            return (v_try is not None) and (G.nodes[v_try].get("settled_agent") is None)
 
         cursor_idx = sa.next_port_to_try if sa.next_port_to_try is not None else 0
         port_to_idx = {p:i for i,p in enumerate(ports)}
@@ -312,7 +255,7 @@ def _move_out(G, node_to_agents):
             if a.probe_home != u or a.probe_result_empty is not True:
                 continue
             p = a.probe_port
-            if p in port_map and p not in seen and port_leads_to_empty(p):
+            if p in port_map and p not in seen :
                 seen.add(p)
                 probe_empty_ports.append(p)
 
@@ -326,14 +269,6 @@ def _move_out(G, node_to_agents):
             if i is not None and i >= cursor_idx:
                 chosen_port = p
                 break
-
-        # 2) Fallback: choose any currently-empty neighbor in DFS order >= cursor
-        # if chosen_port is None:
-        #     for i in range(cursor_idx, len(ports)):
-        #         p = ports[i]
-        #         if port_leads_to_empty(p):
-        #             chosen_port = p
-        #             break
 
         # Forward DFS move: ALL movers go together
         if chosen_port is not None:
