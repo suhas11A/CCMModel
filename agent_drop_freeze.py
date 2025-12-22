@@ -11,9 +11,6 @@ NodeStatus = {
     "OCCUPIED": 1,
 }
 
-# ----------------------------------------------------------------------
-# AGENT
-# ----------------------------------------------------------------------
 class Agent:
     def __init__(self, id, initial_node):
         self.id = id
@@ -37,32 +34,19 @@ class Agent:
         self.entry_pin = None  
 
 
-
-# ----------------------------------------------------------------------
-# UTIL
-# ----------------------------------------------------------------------
-
 def _ordered_ports(G, u):
     port_map = G.nodes[u]["port_map"]
     nbr_to_port_u = G.nodes[u]["nbr_to_port"]
 
     def rank(p):
         v = port_map[p]
-        # arrival port at v that leads back to u (0-based)
         p_vu = G.nodes[v]["nbr_to_port"][u]
-
-        local_is_p1  = (p == 0)      # paper port 1
-        remote_is_p1 = (p_vu == 0)   # paper port 1 at the other end
-
-        # tp1: local != 1, remote == 1  (=> local !=0, remote==0)
+        local_is_p1  = (p == 0)
+        remote_is_p1 = (p_vu == 0)
         if (not local_is_p1) and remote_is_p1:
-            return (0, p)  # highest
-
-        # t11 or t1q: local == 1 (=> local==0), regardless of remote
+            return (0, p)
         if local_is_p1:
             return (1, p)
-
-        # tpq: local != 1 and remote != 1
         return (2, p)
 
     return sorted(port_map.keys(), key=rank)
@@ -106,16 +90,12 @@ def _init_ports(G):
         G.nodes[u]["port_map"] = {i: v for i, v in enumerate(nbrs)}
         G.nodes[u]["nbr_to_port"] = {v: i for i, v in enumerate(nbrs)}
 
-    # (Optional) keep edge attrs consistent if your visualizer expects them
+    # keep edge attrs consistent if your visualizer expects them
     for u, v in G.edges:
         G[u][v][f"port_{u}"] = G.nodes[u]["nbr_to_port"][v]
         G[u][v][f"port_{v}"] = G.nodes[v]["nbr_to_port"][u]
 
 
-
-# ----------------------------------------------------------------------
-# CORE STEPS (probe out, probe back, move out)
-# ----------------------------------------------------------------------
 def _probe_out(G, node_to_agents):
     """
     All UNSETTLED (non-settled) agents at each node fan out to distinct ports.
@@ -124,7 +104,6 @@ def _probe_out(G, node_to_agents):
     moves = []  # list of (agent, src, dst, port)
 
     for u, agents_here in node_to_agents.items():
-        # unsettled visitors (exclude the permanently settled agent at u)
         settled = G.nodes[u].get("settled_agent")
         unsettled = [a for a in agents_here if a is not settled and a.state["status"] == AgentStatus["UNSETTLED"]]
         if not unsettled:
@@ -142,12 +121,11 @@ def _probe_out(G, node_to_agents):
         if deg == 0:
             continue
 
-        # assign first min(len(unsettled), deg) agents to ports 0..deg-1
         sa = G.nodes[u].get("settled_agent")
         ports = _ordered_ports(G, u)
 
         start = sa.next_port_to_try if sa is not None else 0
-        ports_to_probe = ports[start:]  # probe only remaining ports
+        ports_to_probe = ports[start:]
         for a, port in zip(unsettled, ports_to_probe):
             v = G.nodes[u]["port_map"].get(port)
             if v is None:
@@ -158,9 +136,8 @@ def _probe_out(G, node_to_agents):
             a.state["status"] = AgentStatus["SETTLED_WAIT"]
             moves.append((a, u, v, port))
 
-    # execute moves simultaneously
     for a, u, v, _port in moves:
-        back_port = G[u][v][f"port_{v}"]   # port at v that leads back to u
+        back_port = G[u][v][f"port_{v}"]
         G.nodes[u]["agents"].remove(a)
         a.currentnode = v
         G.nodes[v]["agents"].add(a)
@@ -181,14 +158,13 @@ def _probe_back(G, agents):
         a.probe_result_empty = (G.nodes[src].get("settled_agent") is None)
         home = a.probe_home
         if home is None:
-            # should not happen, but don’t crash the sim
             a.state["status"] = AgentStatus["UNSETTLED"]
             continue
         moves.append((a, src, home))
 
     # execute returns simultaneously
     for a, src, home in moves:
-        back_port = G[src][home][f"port_{home}"]  # port at home that leads back to src
+        back_port = G[src][home][f"port_{home}"]
         G.nodes[src]["agents"].remove(a)
         a.currentnode = home
         G.nodes[home]["agents"].add(a)
@@ -229,7 +205,7 @@ def _move_out(G, node_to_agents):
             G.nodes[u]["node_status"] = NS["OCCUPIED"]
             newly_settled_nodes.add(u)
 
-    # Phase 2: GROUP DFS move (your version)
+    # Phase 2: GROUP DFS move
     for u, movers in unsettled_by_node.items():
         if not movers:
             continue
@@ -297,10 +273,9 @@ def _move_out(G, node_to_agents):
         # 3) No empty neighbor left -> backtrack to parent as a group
         if sa.parent_port is not None and sa.parent_port in port_map:
             v = port_map[sa.parent_port]
-            sa.next_port_to_try = len(ports)  # mark exhausted
+            sa.next_port_to_try = len(ports)
             for a in movers:
                 planned_moves.append((a, u, v))
-        # else: root exhausted -> movers stay
 
     # Execute moves (your original logic)
     for a, u, v in planned_moves:
@@ -311,16 +286,12 @@ def _move_out(G, node_to_agents):
         a.pin = back_port
         a.entry_pin = back_port
 
-        # Clear probe state once we commit a move (probe is per-round info)
         a.probe_home = None
         a.probe_port = None
         a.probe_result_empty = None
 
         G.nodes[v]["agents"].add(a)
 
-# ----------------------------------------------------------------------
-# MAIN SIMULATION (signature must match simulation_wrapper.py)
-# ----------------------------------------------------------------------
 def run_simulation(G, agents, max_degree, rounds, starting_positions):
     for node in G.nodes():
         G.nodes[node]["agents"] = set()
@@ -349,7 +320,6 @@ def run_simulation(G, agents, max_degree, rounds, starting_positions):
 
     # Each macro-round = 3 synchronous sub-rounds
     for r in range(1, rounds + 1):
-        # stop if all agents settled
         if all(a.state["status"] == AgentStatus["SETTLED"] for a in agents):
             break
 
@@ -365,7 +335,6 @@ def run_simulation(G, agents, max_degree, rounds, starting_positions):
         _snapshot(all_positions, all_statuses, all_leaders, all_levels, all_node_states,
                   f"round{r}:probe_back", G, agents)
 
-        # recompute node mapping after returns
         node_to_agents = defaultdict(list)
         for a in agents:
             node_to_agents[a.currentnode].append(a)

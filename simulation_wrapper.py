@@ -51,7 +51,7 @@ DEFAULT_MAX_DEGREE = 4
 DEFAULT_AGENT_COUNT = 13
 DEFAULT_STARTING_POSITIONS = 2
 DEFAULT_SEED = 42
-DEFAULT_ROUNDS = 100 # A reasonable default, maybe based on graph size
+DEFAULT_ROUNDS = 500 # A reasonable default, maybe based on graph size
 
 # --- Command Line Argument Parsing ---
 parser = argparse.ArgumentParser(
