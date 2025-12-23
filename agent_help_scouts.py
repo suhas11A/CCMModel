@@ -1,569 +1,868 @@
-from collections import defaultdict
+import networkx as nx
 
-def get_dict_key(d, value):
-    for k, v in d.items():
-        if v == value:
-            return k
-    return str(value)
-
-AgentStatus = {
-    # status of the agent
-    "SETTLED": 0,
-    "UNSETTLED": 1,
-    "SETTLED_WAIT": 2
-}
-
-AgentRole = {
-    # role of the agent
-    "LEADER": 0,
-    "FOLLOWER": 1,
-    "HELPER": 2,
-    "CHASER": 3
-}
-
-NodeStatus = {
-    # a node can be empty or occupied by a settled agent
-    "EMPTY": 0,
-    "OCCUPIED": 1
-}
+BOTTOM = None
+PORT_ONE = 0
 
 class Agent:
-    """Class of agents. Contains the functions and variables stored at each agent."""
-    def __init__(self, id, initial_node):
-        self.id = id
-        self.currentnode = initial_node
-        self.round_number = 0
-        self.state = {
-            "status": AgentStatus["UNSETTLED"],
-            "role": AgentRole["LEADER"],
-            "level": 0,
-            "leader": self,
-            "home": None # assigned a node when agent settles.
-        }
-        self.pin = None
-        self.next = None
-        self.scout_forward = None
-        self.scout_return = None
-        self.scout_port = None
-        self.scout_result = None
-        self.scout_return_port = None
-        self.checked_port = None
-        self.max_scouted_port = None
-        self.checked_result = None
-        self.parent_port = None
-        self.help_port = None
-        self.help_return_port = None
-        self.going_to_help = False
+    def __init__(self, id: int, start_node: int):
+        
+        self.node = start_node
 
-    def reset(self, leader, level, role, status):
-        self.state['status'] = status
-        self.state['role'] = role
-        self.state['level'] = level
-        self.state['leader'] = leader
-        self.pin = None
-        self.next = None
-        self.scout_forward = None
-        self.scout_return = None
-        self.scout_port = None
-        self.scout_result = None
-        self.scout_return_port = None
-        self.checked_port = None
-        self.max_scouted_port = None
-        self.checked_result = None
-        self.parent_port = None
-        self.help_port = None
-        self.help_return_port = None
-        self.going_to_help = False
+        
+        self.ID = id
+        self.state = "unsettled"          
+        self.arrivalPort = BOTTOM         
+        self.treeLabel = BOTTOM           
 
-def get_agent_positions_and_statuses(G, agents):
-    positions = [a.currentnode for a in agents]
-    statuses  = [a.state['status'] for a in agents]
-    return positions, statuses
+        
+        self.nodeType = BOTTOM            
+        self.parent = BOTTOM              
+        self.parentPort = BOTTOM          
+        self.P1Neighbor = BOTTOM          
+        self.portAtP1Neighbor = BOTTOM    
+        self.vacatedNeighbor = False      
+        self.recentChild = BOTTOM         
+        self.sibling = BOTTOM             
+        self.recentPort = BOTTOM          
+        self.probeResult = BOTTOM         
+        self.checked = 0                  
 
-def elect_leader(G, agents):
-    leaders = set()
-    for a in agents:
-        if a.state['role'] == AgentRole['LEADER']:
-            leaders.add((a.state['level'],a))
-    if len(leaders) == 0:
-        print(f"No leader found at node {agents[0].currentnode}")
-        print(f"Agents at node {agents[0].currentnode}: {[(a.id, a.state['level'], a.state['role'], a.state['status']) for a in agents]}")
-        return
-    elif len(leaders) == 1:
-        leader = leaders.pop()
-        print(f"Only one leader: {leader[1].id, leader[0]} at node {leader[1].currentnode} with level {leader[0]}")
-        return leader[1]
-    else:
-        sorted_leaders = sorted(leaders, key=lambda x: (-x[0], x[1].id))
-        leader = sorted_leaders[0]
-        print(f"Leader elected: {leader[1].id, leader[0]} at node {leader[1].currentnode} with level {leader[0]}")
-        return leader[1]
+        
+        self.scoutPort = BOTTOM
+        self.scoutEdgeType = BOTTOM       
+        self.scoutP1Neighbor = BOTTOM
+        self.scoutPortAtP1Neighbor = BOTTOM
+        self.scoutP1P1Neighbor = BOTTOM
+        self.scoutPortAtP1P1Neighbor = BOTTOM
+        self.scoutResult = BOTTOM         
 
-def increase_level(G, agents, leader):
-    max_level = max(a.state['level'] for a in agents)
-    if leader.state['level'] < max_level:
-        # everyone becomes a chaser except the max level settled agent
-        # find the max level agent
-        max_agent = None
-        for a in agents:
-            if a.state['level'] == max_level:
-                max_agent = a
+        
+        self.prevID = BOTTOM
+        self.childPort = BOTTOM
+        self.siblingDetails = BOTTOM      
+        self.childDetails = BOTTOM        
+        self.nextAgentID = BOTTOM
+        self.nextPort = BOTTOM
+
+        
+        self.meta = {}
+
+    
+    @property
+    def aid(self) -> int:
+        return self.ID
+
+def _port(G, u, v) :
+    """Port number at u that leads to v (from your graph_utils encoding)."""
+    return G[u][v][f"port_{u}"]
+
+
+def _pick_highest_id(ids_set):
+    return max(ids_set) if ids_set else None
+
+
+def edge_type(G, u, v, port_one = PORT_ONE):
+    """
+    Edge type as in the paper:
+      t11 if puv==1 and pvu==1
+      tp1 if puv!=1 and pvu==1
+      t1q if puv==1 and pvu!=1
+      tpq if puv!=1 and pvu!=1
+    Here '1' is mapped to `port_one` because your ports are 0-based by default. :contentReference[oaicite:1]{index=1}
+    """
+    puv = _port(G, u, v)
+    pvu = _port(G, v, u)
+    u_is_1 = (puv == port_one)
+    v_is_1 = (pvu == port_one)
+
+    if u_is_1 and v_is_1:
+        return "t11"
+    if (not u_is_1) and v_is_1:
+        return "tp1"
+    if u_is_1 and (not v_is_1):
+        return "t1q"
+    return "tpq"
+
+def _sorted_incident_edges(G, u, port_one = PORT_ONE):
+    """
+    Return incident edges (u,v) sorted by Algorithm 2 "edge-priority":
+      tp1  >  (t11 ~ t1q)  >  tpq
+    and within each type: smallest incident port number at u first.
+    """
+    
+    pr = {"tp1": 0, "t11": 1, "t1q": 1, "tpq": 2}
+    items = []
+    for v in G.neighbors(u):
+        et = edge_type(G, u, v, port_one=port_one)
+        items.append((pr[et], _port(G, u, v), v, et))
+    items.sort()
+    return items  
+
+
+def _port_neighbor(G, x, port):
+    """Return neighbor of node x via local port number `port` (or None)."""
+    return G.nodes[x].get("port_map", {}).get(port)
+
+def _xi(G, w, exclude_ids=None):
+    """
+    ξ(w): returns the ID of an agent at w (could be ψ(w) if settled exists),
+    or None (⊥) if no non-excluded agents are at w.
+    """
+    exclude_ids = exclude_ids or set()
+
+    
+    sid = G.nodes[w].get("settled_agent")
+    if sid is not None and sid not in exclude_ids:
+        return sid
+
+    
+    agents_here = [aid for aid in G.nodes[w].get("agents", set()) if aid not in exclude_ids]
+    return agents_here[0] if agents_here else None
+
+
+def _ensure_node_fields(G):
+    for u in G.nodes():
+        if "agents" not in G.nodes[u]:
+            G.nodes[u]["agents"] = set()
+        if "settled_agent" not in G.nodes[u]:
+            G.nodes[u]["settled_agent"] = None
+        if "vacated" not in G.nodes[u]:
+            G.nodes[u]["vacated"] = False
+
+
+def _psi_id(G, v):
+    return G.nodes[v].get("settled_agent")
+
+
+def _psi(G, agents, v):
+    sid = _psi_id(G, v)
+    return agents[sid] if sid is not None else None
+
+
+def _settle_at(G, agents, agent_id, v):
+    _ensure_node_fields(G)
+    a = agents[agent_id]
+
+    
+    if a.node is not None:
+        G.nodes[a.node]["agents"].discard(agent_id)
+
+    
+    a.node = v
+    G.nodes[v]["agents"].add(agent_id)
+
+    
+    a.state = "settled"
+    G.nodes[v]["settled_agent"] = agent_id
+    G.nodes[v]["vacated"] = False
+
+
+def dfs_p1tree(G, v0, port_one = PORT_ONE):
+    """
+    Algorithm 2: DFS_P1Tree(v0, G)
+
+    Returns:
+      T          : nx.Graph (the PITree edges chosen)
+      node_type  : dict[node] -> {"unvisited","visited","partiallyVisited","fullyVisited"}
+      parent     : dict[node] -> parent node (or None for root)
+    """
+    
+    T = nx.Graph()
+    T.add_nodes_from(G.nodes())
+
+    node_type = {u: "unvisited" for u in G.nodes()}
+    parent = {u: None for u in G.nodes()}
+
+    S = []
+
+    
+    S.append(v0)
+    node_type[v0] = "visited"
+
+    
+    def has_priority_edge_in_T(u: int) -> bool:
+        for x in T.neighbors(u):
+            if edge_type(G, u, x, port_one=port_one) in {"tp1", "t11", "t1q"}:
+                return True
+        return False
+
+    
+    while S:
+        
+        u = S[-1]
+
+        
+        e_next = None  
+
+        
+        inc = _sorted_incident_edges(G, u, port_one=port_one)
+
+        
+        for _, __, v, et in inc:
+            
+            
+            if node_type[v] == "unvisited":
+                e_next = v
                 break
-        if max_agent.state['status'] != AgentStatus['SETTLED']:
-            print(f"Max agent {max_agent.id} is not settled")
-            raise Exception("Max agent not settled")
-        # make everyone a chaser with level set to max_level and role set to chaser and leader is the leader of the max agent
-        for a in agents:
-            if a != max_agent:
-                a.reset(max_agent.state['leader'], max_level, AgentRole['CHASER'], AgentStatus['UNSETTLED'])
-                print(f"Agent {a.id} changed leader to {max_agent.state['leader'].id, max_level} and role to CHASER {a.state['role']}")
-        print(f"Leader {leader.id} is not max level agent, making all agents a chaser for leader {max_agent.state['leader'].id, max_level}")
-
-    elif leader.state['level'] == max_level:
-        # find the number of agents with the same level
-        max_level_agents = [a for a in agents if a.state['level'] == max_level and a.state['leader']!= leader]
-        if leader not in max_level_agents:
-            max_level_agents.append(leader)
-        if len(max_level_agents) > 1:
-            # increase level of all agents to max_level + 1
-            for a in agents:
-                a.state['level'] = max_level + 1
-                a.state['leader'] = leader
-                if a != leader:
-                    a.reset(leader, max_level + 1, AgentRole['FOLLOWER'], AgentStatus['UNSETTLED'])
-                    print(f"Changed leader of {a.id} to {leader.id, max_level + 1} and role to FOLLOWER {a.state['role']}")
-            G.nodes[leader.currentnode]['settled_agent'] = None
-            print(f"Leader {leader.id} is not unique max level agent, increasing level of all agents to {max_level + 1}")
-        else:
-            print(f"Leader {leader.id, leader.state['level']} is unique max level agent that is a leader already at max level {max_level}")
-            # check for the leader of other agents
-            G.nodes[leader.currentnode]['settled_agent'] = None
-            for a in agents:
-                a.state['level'] = max_level
-                if a.state['leader'] != leader:
-                    a.reset(leader, max_level, AgentRole['FOLLOWER'], AgentStatus['UNSETTLED'])
-                    print(f"Agent {a.id} changed leader to {leader.id, leader.state['level']}")
-    else:
-        print(f"Leader {leader.id} is unique max level agent, no need to increase level")
-
-def settle_an_agent(G, agent):
-    print(f"Checking for settled agent at Node {agent.currentnode}")
-    settled_agent = G.nodes[agent.currentnode]['settled_agent']
-    if settled_agent is None:
-        # settle an agent
-        agents_at_node = G.nodes[agent.currentnode]['agents']
-        if len(agents_at_node) == 1:
-            print(f"Leader {agent.id} is alone at node {agent.currentnode}, becomes settled_wait")
-            agent.reset(agent.state['leader'], agent.state['level'], AgentRole['LEADER'], AgentStatus['SETTLED_WAIT'])
-            agent.parent_port = agent.pin
-            G.nodes[agent.currentnode]['settled_agent'] = agent
-        else:
-            non_leader_agents = [a for a in agents_at_node if a.state['role'] != AgentRole['LEADER']]
-            max_id_agent = max(non_leader_agents, key=lambda x: x.id)
-            max_id_agent.reset(agent.state['leader'], agent.state['level'], AgentRole['FOLLOWER'], AgentStatus['SETTLED'])
-            max_id_agent.parent_port = agent.pin
-            G.nodes[agent.currentnode]['settled_agent'] = max_id_agent
-            print(f"Leader {agent.id, agent.state['level']} settled {max_id_agent.id} at node {agent.currentnode}")
-    else:
-        print(f"Settled agent {settled_agent.id} at node {agent.currentnode} is already settled")
-        # check if the settled agent has the same leader and level
-        if settled_agent.state['leader'] != agent or agent.state['level'] != settled_agent.state['level']:
-            print(f"Settled agent {settled_agent.id} at node {agent.currentnode} has different leader {settled_agent.state['leader'].id} and level {settled_agent.state['level']} than agent {agent.id} with leader {agent.state['leader'].id} and level {agent.state['level']}")
-            raise Exception("Settled agent has different leader")
-    return settled_agent
-
-def move_to_scout(G, agent):
-    if agent.state['role'] != AgentRole['HELPER']:
-        raise Exception("Agent is not a helper")
-    if agent.state['status'] != AgentStatus['SETTLED']:
-        raise Exception("Agent is not settled")
-    if agent.help_port is None:
-        raise Exception("No help port found for agent")
-    help_node = G.nodes[agent.currentnode]['port_map'][agent.help_port]
-    if help_node is None:
-        raise Exception("No help node found for agent")
-    else:
-        agent.going_to_help = True
-        print(f"Agent {agent.id} moved forward to help node {help_node} via help port {agent.help_port}")
-        # move to the help node
-        G.nodes[agent.currentnode]['agents'].remove(agent)
-        agent.pin = G[agent.currentnode][help_node][f"port_{help_node}"]
-        agent.currentnode = help_node
-        G.nodes[help_node]['agents'].add(agent)
-    return
-
-def ensure_scout(G, agent):
-    settled_agent = G.nodes[agent.currentnode]['settled_agent']
-    if settled_agent is None or settled_agent.state['leader']!= agent.state['leader'] or agent.state['leader'].currentnode != agent.currentnode:
-        print(f"Help mismatch {agent.currentnode}")
-        agent.help_port = None
-        home_node = G.nodes[agent.currentnode]['port_map'][agent.help_return_port]
-        if home_node is None:
-            raise Exception("No home node found for agent")
-        else:
-            print(f"Agent {agent.id} moved back to home {home_node} via help return port {agent.help_return_port} because no settled agent")
-            # move to the home
-            G.nodes[agent.currentnode]['agents'].remove(agent)
-            agent.currentnode = home_node
-            G.nodes[home_node]['agents'].add(agent)
-            agent.help_return_port = None
-            agent.going_to_help = False
-            agent.state['role'] = AgentRole['FOLLOWER']
-        return
-
-def helper_return(G, agent):
-    agent.going_to_help = False
-    if agent.state['role'] != AgentRole['HELPER']:
-        raise Exception("Agent is not a helper")
-    if agent.state['status'] != AgentStatus['SETTLED']:
-        raise Exception("Agent is not settled")
-    if agent.help_port is None:
-        agent.state['role'] = AgentRole['FOLLOWER']
-        print(f"Agent {agent.id} is not a helper anymore")
-    home_node = G.nodes[agent.currentnode]['port_map'][agent.help_return_port]
-    if home_node is None:
-        raise Exception("No home node found for agent")
-    else:
-        print(f"Agent {agent.id} returned back to home {home_node} via help port {agent.help_return_port}")
-        # move to the home
-        G.nodes[agent.currentnode]['agents'].remove(agent)
-        agent.currentnode = home_node
-        G.nodes[home_node]['agents'].add(agent)
-    return
-
-def scout_forward(G, agent):
-    unsettled_agents = list(G.nodes[agent.currentnode]['agents'])
-    settled_agent = G.nodes[agent.currentnode]['settled_agent']
-    if settled_agent is None:
-        raise Exception("No settled agent at node")
-    if settled_agent is not None and settled_agent in unsettled_agents:
-        print(f"Scouting: Settled agent {settled_agent.id} at node {agent.currentnode}")
-        unsettled_agents.remove(settled_agent)
-    if len(unsettled_agents) == 0:
-        print(f"No unsettled agents at node {agent.currentnode}")
-        return
-    else:
-        print(f"Unsettled agents at node {agent.currentnode}: {[a.id for a in unsettled_agents]}")
-        # assign the scout ports to the unsettled agents increasing order of their ids starting from the checked port
-        if settled_agent is None:
-            raise Exception("No settled agent at node")
-        checked_port = settled_agent.checked_port
-        if checked_port is None:
-            checked_port = -1
-            settled_agent.max_scouted_port = -1
-        unsettled_agents.sort(key=lambda x: x.id)
-        for i, a in enumerate(unsettled_agents):
-            scout_port = checked_port + i + 1
-            if scout_port == settled_agent.parent_port:
-                print(f"Parent port {scout_port} is not assigned to agent {a.id} at node {agent.currentnode}")
-                scout_port += 1
-                checked_port += 1
-            if scout_port < G.degree[agent.currentnode]:
-                a.scout_port = scout_port
-                a.scout_forward = True
-                print(f"Unsettled agent {a.id} at node {agent.currentnode} assigned scout port {a.scout_port}")
-                if a.scout_port > settled_agent.max_scouted_port:
-                    settled_agent.max_scouted_port = a.scout_port
             else:
-                print(f"Unsettled agent {a.id} at node {agent.currentnode} not assigned a scout port as it exceeds degree")
-                a.scout_port = None
-                settled_agent.max_scouted_port = G.degree[agent.currentnode] - 1
-                break
-    return
+                
+                if node_type[v] == "partiallyVisited" and et in {"tp1", "t11"}:
+                    e_next = v
+                    break
 
-def scout_neighbor(G, agent):
-    agent.scout_forward = False
-    agent.scout_return = True
-    if agent.scout_port is None:
-        return
-    if agent.scout_port is not None:
-        neighbor = G.nodes[agent.currentnode]["port_map"][agent.scout_port]
-        if neighbor is None:
-            raise Exception("No neighbor found for scout port")
-        else:
-            print(f"Agent {agent.id} moved to neighbor {neighbor} via scout port {agent.scout_port}")
-            # move to the neighbor
-            agent.pin = G[agent.currentnode][neighbor][f"port_{neighbor}"]
-            G.nodes[agent.currentnode]['agents'].remove(agent)
-            agent.currentnode = neighbor
-            G.nodes[neighbor]['agents'].add(agent)
-            agent.scout_return_port = agent.pin
-            settled_agent = G.nodes[neighbor]['settled_agent']
-            if settled_agent is None:
-                print(f"No settled agent at node {neighbor}")
-                agent.scout_result = NodeStatus['EMPTY']
+        
+        if e_next is not None:
+            v = e_next
+
+            
+            et_e = edge_type(G, u, v, port_one=port_one)
+
+            
+            pu_parent = None
+            et_parent = None
+            w = parent[u]
+            if w is not None:
+                et_parent = edge_type(G, w, u, port_one=port_one)
+
+            
+            if (
+                w is not None
+                and et_e == "tpq"
+                and et_parent == "tpq"
+                and (not has_priority_edge_in_T(u))
+            ):
+                
+                node_type[u] = "partiallyVisited"
+                S.pop()
             else:
-                print(f"Settled agent {settled_agent.id} found at node {neighbor}")
-                if settled_agent.state['leader'] == agent.state['leader'] and settled_agent.state['level'] == agent.state['level']:
-                    print(f"Settled agent {settled_agent.id} at node {neighbor} has the same leader and level as agent {agent.id}")
-                    agent.scout_result = NodeStatus['OCCUPIED']
-                    # recruit the settled agent as helper
-                    settled_agent.state['role'] = AgentRole['HELPER']
-                    settled_agent.help_port = agent.scout_return_port
-                    settled_agent.help_return_port = agent.scout_port
-                else:
-                    print(f"Settled agent {settled_agent.id} at node {neighbor} has different leader or level than agent {agent.id}")
-                    agent.scout_result = NodeStatus['EMPTY']
-    return
+                
+                parent[v] = u
 
-def scout_return(G, agent):
-    home = G.nodes[agent.currentnode]['port_map'][agent.scout_return_port]
-    if home is None:
-        raise Exception("No home found for scout return port")
-    else:
-        print(f"Agent {agent.id} moved back to home {home} via scout return port {agent.scout_return_port}")
-        # move to the home
-        G.nodes[agent.currentnode]['agents'].remove(agent)
-        agent.currentnode = home
-        G.nodes[home]['agents'].add(agent)
-    return
+                
+                T.add_edge(u, v)
+                
+                T[u][v]["p_uv"] = _port(G, u, v)
+                T[u][v]["p_vu"] = _port(G, v, u)
+                T[u][v]["edgeType"] = et_e
 
-def chase_leader(G, agent):
-    print(f"Chasing leader, Agent {agent.id} at node {agent.currentnode} chasing leader {agent.state['leader'].id, agent.state['level']}")
-    settled_agent = G.nodes[agent.currentnode]['settled_agent']
-    if settled_agent is None:
-        raise Exception("No settled agent at node")
-    leader_match = agent.state['leader'] == settled_agent.state['leader'] and agent.state['level'] == settled_agent.state['level']
-    if leader_match:
-        leader_position_match = agent.currentnode == settled_agent.state['leader'].currentnode
-        print(f"Leader match, Agent {agent.id} at node {agent.currentnode} has the same leader and level as settled agent {settled_agent.id}. The leader is at node {settled_agent.state['leader'].currentnode}")
-        if leader_position_match:
-            print(f"Reached the leader at node {agent.currentnode} where {settled_agent.id} is settled and leader of settled agent is {settled_agent.state['leader'].id} and leader's position is {settled_agent.state['leader'].currentnode}")
-            agent.state['role'] = AgentRole['FOLLOWER']
+                S.append(v)
+                node_type[v] = "visited"
         else:
-            print(f"Chasing leader {agent.state['leader'].id} by moving to next node by port {settled_agent.next}")
-            next_node = G.nodes[agent.currentnode]['port_map'][settled_agent.next]
-            if next_node is None:
-                raise Exception("No next node found for agent")
-            else:
-                agent.pin = G[agent.currentnode][next_node][f"port_{next_node}"]
-                G.nodes[agent.currentnode]['agents'].remove(agent)
-                agent.currentnode = next_node
-                G.nodes[next_node]['agents'].add(agent)
+            
+            node_type[u] = "fullyVisited"
+            S.pop()
+
+    return T, node_type, parent
 
 
-def check_scout_result(G, agent):
-    settled_agent = G.nodes[agent.currentnode]['settled_agent']
-    if settled_agent.state['status'] == AgentStatus['SETTLED_WAIT']:
-        print(f"Settled agent {settled_agent.id} at node {agent.currentnode} is waiting")
-        return
-    if settled_agent is None:
-        raise Exception("No settled agent at node")
-    empty_ports = []
-    for a in G.nodes[agent.currentnode]['agents']:
-        if a.scout_return == True:
-            a.scout_return = False
-            if a.scout_result == NodeStatus['EMPTY']:
-                a.scout_result = None
-                empty_ports.append(a.scout_port)
-                print(f"Adding empty port by Agent {a.id} found empty port {a.scout_port} at node {agent.currentnode}")
-    if len(empty_ports) > 0:
-        empty_port = min(empty_ports)
-        print(f"In if, Leader agent {agent.id} found empty port {empty_port} at node {agent.currentnode}")
-        settled_agent.checked_port = empty_port
-        # return helper agents
-        for a in G.nodes[agent.currentnode]['agents']:
-            if a.state['role'] == AgentRole['HELPER']:
-                a.help_port = None
-                print(f"Helper agent {a.id} not needed anymore.")
-    else:
-        print(f"Leader agent {agent.id} found no empty port at node {agent.currentnode} and {settled_agent.max_scouted_port} is the max scouted port. Update checked port!!")
-        empty_port = None
-        if settled_agent.max_scouted_port < G.degree[agent.currentnode] - 1:
-            settled_agent.checked_port = settled_agent.max_scouted_port
-        else:
-            settled_agent.checked_port = None
-            # return to parent
-            if settled_agent.parent_port is None:
-                raise Exception("No parent port found for settled agent")
-            else:
-                empty_port = settled_agent.parent_port
-    agent.next = empty_port
-    return
 
-def follow_leader(G, agent):
-    if agent.next is None:
-        print(f"Agent {agent.id} has no next port to follow")
-        return
-    unsettled_agents = [a for a in G.nodes[agent.currentnode]['agents'] if a.state['leader'] == agent and a.state['status'] == AgentStatus['UNSETTLED']]
-    settled_agent = G.nodes[agent.currentnode]['settled_agent']
-    if settled_agent is None:
-        raise Exception("No settled agent at node")
-    if settled_agent is not None and settled_agent in unsettled_agents:
-        print(f"Following leader, Settled agent {settled_agent.id} remains at node {agent.currentnode}")
-        unsettled_agents.remove(settled_agent)
-    if len(unsettled_agents) == 0:
-        print(f"No unsettled agents at node {agent.currentnode}")
-        return
-    else:
-        print(f"Unsettled agents at node {agent.currentnode}: {[a.id for a in unsettled_agents]} follow leader {agent.id} to port {agent.next}")
-        settled_agent.next = agent.next
-        # all unsettled agents including the leader to the next port
-        next_node = G.nodes[agent.currentnode]['port_map'][agent.next]
-        if next_node is None:
-            raise Exception("No next node found for agent")
-        else:
-            for a in unsettled_agents:
-                print(f"Follow leader Agent {a.id} moved to next node {next_node} from node {a.currentnode} via port {agent.next}. Leader is {agent.id} at node {agent.currentnode}")
-                a.pin = G[a.currentnode][next_node][f"port_{next_node}"]
-                G.nodes[a.currentnode]['agents'].remove(a)
-                a.currentnode = next_node
-                G.nodes[next_node]['agents'].add(a)
-    return
 
-def get_safe_attr(obj, attr, default=None):
-    """Safely get an attribute from an object, returning default if missing."""
-    return getattr(obj, attr, default)
 
-def run_simulation(G, agents, max_degree, rounds, starting_positions):
-    all_positions = []
-    all_statuses = []
-    all_leader_ids = []
-    all_leader_levels = []
-    all_node_settled_states = []
+def can_vacate(G, agents, x, A_vacated, port_one=PORT_ONE):
+    """
+    Algorithm 3: Can Vacate()  (paper, pg 32)
+    Input: Agent ψ(x) at node x
+    Output: state of ψ(x): "settled" or "settledScout"
+    """
+    if A_vacated is None:
+        A_vacated = set()
 
-    round_number = 1
-    repeat_count = 0
+    psi_x_id = G.nodes[x].get("settled_agent")
+    if psi_x_id is None:
+        raise ValueError(f"can_vacate called on node {x} with no settled agent")
 
-    def snapshot(label):
-        positions, statuses = get_agent_positions_and_statuses(G, agents)
-        current_node_states = {}
-        for node_id in G.nodes():
-            settled_agent = G.nodes[node_id]['settled_agent']
-            if settled_agent is not None:
-                # Collect desired attributes safely
-                # Note: 'next' is often associated with the leader's decision,
-                # but stored/used by the settled agent for followers.
-                state_dict = {
-                    "settled_agent_id": settled_agent.id,
-                    # Use get_safe_attr for robustness if attributes might not exist yet
-                    "parent_port": get_safe_attr(settled_agent, 'parent_port'),
-                    "checked_port": get_safe_attr(settled_agent, 'checked_port'),
-                    "max_scouted_port": get_safe_attr(settled_agent, 'max_scouted_port'),
-                    "next_port": get_safe_attr(settled_agent, 'next') # Collect the 'next' port known by settled agent
-                    # Add any other attributes you might want later
-                }
-                current_node_states[str(node_id)] = state_dict # Use string key for JSON
-            else:
-                current_node_states[str(node_id)] = None # Indicate no settled agent
+    ax = agents[psi_x_id]
 
-        # node → status → [agent-ids]
-        grouped = defaultdict(lambda: defaultdict(list))
-        for agent, node, st in zip(agents, positions, statuses):
-            grouped[node][st].append(agent.id)
+    # 1–2: if parentPort = ⊥ then return settled
+    if ax.parentPort is None:
+        ax.state = "settled"
+        return "settled"
 
-        # pretty print
-        for node, status_map in grouped.items():
-            # Skip printing if there is only one settled robot at the node
-            if len(status_map.get(AgentStatus["SETTLED"], [])) == 1 and len(status_map) == 1:
+    # 3–10: if nodeType = visited then visit port-1 neighbor w; if ξ(w) != ⊥ then
+    #        ψ(w) ← ξ(w); set ψ(w).vacatedNeighbor=true; return to x; return settledScout; else return settled
+    if ax.nodeType == "visited":
+        w = _port_neighbor(G, x, port_one)
+        if w is not None:
+            # visit w
+            _move_agent(G, agents, ax.ID, x, port_one)
+
+            xi_w = _xi(G, w, exclude_ids={ax.ID})
+
+            # IMPORTANT: only do ψ(w) ← ξ(w) if w is currently vacated (ψ(w)=⊥)
+            if xi_w is not None:
+                G.nodes[w]["settled_agent"] = xi_w
+                agents[xi_w].vacatedNeighbor = True
+                G.nodes[w]["vacated"] = False  # w is now settled again
+
+                # return to x, then output settledScout
+                p_wx = _port(G, w, x)
+                _move_agent(G, agents, ax.ID, w, p_wx)
+                ax.state = "settledScout"
+                return "settledScout"
+
+            # return to x, then output settled
+            p_wx = _port(G, w, x)
+            _move_agent(G, agents, ax.ID, w, p_wx)
+
+        ax.state = "settled"
+        return "settled"
+
+    # 11–12: fullyVisited and vacatedNeighbor=false => settledScout
+    if ax.nodeType == "fullyVisited" and (ax.vacatedNeighbor is False):
+        ax.state = "settledScout"
+        return "settledScout"
+
+    # 13–14: partiallyVisited => settledScout
+    if ax.nodeType == "partiallyVisited":
+        ax.state = "settledScout"
+        return "settledScout"
+
+    # 15–22: if portAtParent = 1 then visit parent z; maybe mark ψ(z) as settledScout and add to A_vacated;
+    #        return to x; set ψ(x).vacatedNeighbor=true; return settled
+    if ax.portAtParent == port_one:
+        z = _port_neighbor(G, x, ax.parentPort)
+        if z is not None:
+            # visit parent z
+            _move_agent(G, agents, ax.ID, x, ax.parentPort)
+
+            psi_z_id = G.nodes[z].get("settled_agent")
+            if psi_z_id is not None:
+                az = agents[psi_z_id]
+                if az.vacatedNeighbor is False:
+                    az.state = "settledScout"
+                    A_vacated.add(az.ID)
+
+            # return to x via portAtParent
+            _move_agent(G, agents, ax.ID, z, ax.portAtParent)
+
+        ax.vacatedNeighbor = True
+        ax.state = "settled"
+        return "settled"
+
+    # 23–25: else return to x; return settled
+    ax.state = "settled"
+    return "settled"
+
+
+def _node_type_of_psi(agents, psi_id) :
+    """If ψ(y)=⊥ treat nodeType as 'unvisited' (no settled agent)."""
+    if psi_id is None:
+        return "unvisited"
+    nt = agents[psi_id].nodeType
+    return nt if nt is not None else "unvisited"
+
+
+def _choose_best_probe_result(agents, scout_ids, port_one=PORT_ONE):
+    """
+    Implements line 53: choose highest priority edge from scouts based on ψ(y).nodeType.
+    We use a sensible deterministic ordering:
+      nodeType priority: unvisited > partiallyVisited > visited > fullyVisited
+      edgeType priority: tp1 > (t11 ~ t1q) > tpq
+      then smallest port p_xy
+    Returns the chosen scoutResult tuple or None.
+    """
+    node_pr = {
+        "unvisited": 0,
+        "partiallyVisited": 1,
+        "visited": 2,
+        "fullyVisited": 3,
+    }
+    edge_pr = {"tp1": 0, "t11": 1, "t1q": 1, "tpq": 2}
+
+    best = None
+    best_key = None
+    for sid in scout_ids:
+        a = agents[sid]
+        if a.scoutResult is None:
+            continue
+        p_xy, et, nodeType_y, psi_y = a.scoutResult
+        key = (
+            node_pr.get(nodeType_y, 9),
+            edge_pr.get(et, 9),
+            p_xy,
+        )
+        if best is None or key < best_key:
+            best = a.scoutResult
+            best_key = key
+    return best
+
+
+def parallel_probe(G, agents, x, A_scout, port_one=PORT_ONE, max_ports=None):
+    """
+    Algorithm 4: Parallel_Probe()
+    Input: current DFS-head x with settled agent ψ(x), and scout set A_scout
+    Output: next port p_xy (0-based) to probe/traverse next.
+    """
+    if not A_scout:
+        raise ValueError("parallel_probe requires a non-empty A_scout")
+
+    psi_x_id = G.nodes[x].get("settled_agent")
+    if psi_x_id is None:
+        raise ValueError(f"parallel_probe called at x={x} with no settled agent ψ(x)")
+    psi_x = agents[psi_x_id]
+
+    scout_ids_sorted = sorted(list(A_scout))
+    s = len(scout_ids_sorted)
+    delta_x = G.degree[x]
+
+    exclude_ids = set(scout_ids_sorted)
+
+    for sid in scout_ids_sorted:
+        a = agents[sid]
+        a.scoutPort = None
+        a.scoutEdgeType = None
+        a.scoutP1Neighbor = None
+        a.scoutPortAtP1Neighbor = None
+        a.scoutP1P1Neighbor = None
+        a.scoutPortAtP1P1Neighbor = None
+        a.scoutResult = None
+
+    target = delta_x if max_ports is None else min(delta_x, max_ports)
+
+    while psi_x.checked < target:
+        remaining = target - psi_x.checked
+        Delta_prime = min(s, remaining)
+        scout_iter_idx = 0
+        j = 1
+
+        while j <= Delta_prime and scout_iter_idx < s:
+            a_id = scout_ids_sorted[scout_iter_idx]
+            scout_iter_idx += 1
+            a = agents[a_id]
+
+            paper_port = psi_x.checked + j
+            actual_port = paper_port - 1
+            
+            if psi_x.parentPort is not None:
+                parent_paper_port = psi_x.parentPort + 1  
+                if parent_paper_port == paper_port:
+                    j += 1
+                    remaining = target - psi_x.checked
+                    Delta_prime = min(s + 1, remaining)
+                    paper_port = psi_x.checked + j
+                    actual_port = paper_port - 1  
+
+            a.scoutPort = actual_port
+            y = _port_neighbor(G, x, actual_port)
+            if y is None:
+                a.scoutEdgeType = None
+                a.scoutResult = (actual_port, None, "unvisited", None)
+                j += 1
                 continue
-            parts = [
-            f"{get_dict_key(AgentStatus, st)}: {ids}"
-            for st, ids in status_map.items()
-            ]
-            print(f"label {label}, node {node} → " + " | ".join(parts))
+            
+            _move_agent(G, agents, a_id, x, actual_port)
 
-        all_positions.append((label, positions))
-        all_statuses.append((label, statuses))
-        all_node_settled_states.append((label, current_node_states))
-        # capture the current leader‐ID and level for each agent
-        leader_ids    = [a.state['leader'].id    for a in agents]
-        leader_levels = [a.state['level']         for a in agents]
-        all_leader_ids.append((label, leader_ids))
-        all_leader_levels.append((label, leader_levels))
-        return positions, statuses
+            a.scoutEdgeType = edge_type(G, x, y, port_one=port_one)
 
-    # Initialization (outside main loop, before starting rounds)
-    for node in G.nodes():
-        G.nodes[node]['last_election_round'] = -1
+            p_yx_actual = _port(G, y, x)
+            p_yx_paper = p_yx_actual + 1
 
-    for a in agents:
-        G.nodes[a.currentnode]['agents'].add(a)
+            xi_y = _xi(G, y, exclude_ids=exclude_ids)
+            psi_y_id = None
 
-    positions, statuses = snapshot("start")
-    old_positions = positions
-    old_statuses = statuses
+            if xi_y is not None:
+                
+                psi_y_id = xi_y
+                _move_agent(G, agents, a_id, y, p_yx_actual)  
 
-    max_rounds = rounds
-    print(f"max_rounds: {max_rounds}")
+            else:
+                
+                if p_yx_paper == 1:
+                    psi_y_id = None
+                    _move_agent(G, agents, a_id, y, p_yx_actual)  
 
-    while any(s == AgentStatus['UNSETTLED'] for s in statuses) and round_number <= max_rounds:
+                else:
+                    
+                    z = _port_neighbor(G, y, port_one)
+                    if z is None:
+                        psi_y_id = None
+                        _move_agent(G, agents, a_id, y, p_yx_actual)  
+                    else:
+                        _move_agent(G, agents, a_id, y, port_one)  
 
-        round_number += 1
-        print(f'------\nround Number {round_number - 1}\n------')
+                        xi_z = _xi(G, z, exclude_ids=exclude_ids)
+                        p_zy_actual = _port(G, z, y)
+                        p_zy_paper = p_zy_actual + 1
+
+                        a.scoutP1Neighbor = xi_z
+                        a.scoutPortAtP1Neighbor = p_zy_actual
+
+                        if xi_z is not None:
+                            
+                            _move_agent(G, agents, a_id, z, p_zy_actual)  
+                            _move_agent(G, agents, a_id, y, p_yx_actual)  
+
+                            b_found = None
+                            for b_id in scout_ids_sorted:
+                                b = agents[b_id]
+                                if b.scoutP1Neighbor == xi_z and b.scoutPortAtP1Neighbor == p_zy_actual:
+                                    b_found = b_id
+                                    break
+                            psi_y_id = b_found
+
+                        else:
+                            
+                            if p_zy_paper == 1:
+                                psi_y_id = None
+                                _move_agent(G, agents, a_id, z, p_zy_actual)  
+                                _move_agent(G, agents, a_id, y, p_yx_actual)  
+                            else:
+                                
+                                w = _port_neighbor(G, z, port_one)
+                                if w is None:
+                                    psi_y_id = None
+                                    _move_agent(G, agents, a_id, z, p_zy_actual)  
+                                    _move_agent(G, agents, a_id, y, p_yx_actual)  
+                                else:
+                                    _move_agent(G, agents, a_id, z, port_one)  
+
+                                    xi_w = _xi(G, w, exclude_ids=exclude_ids)
+                                    p_wz_actual = _port(G, w, z)
+
+                                    a.scoutP1P1Neighbor = xi_w
+                                    a.scoutPortAtP1P1Neighbor = p_wz_actual
+
+                                    if xi_w is None:
+                                        psi_y_id = None
+                                        
+                                        _move_agent(G, agents, a_id, w, p_wz_actual)  
+                                        _move_agent(G, agents, a_id, z, p_zy_actual)  
+                                        _move_agent(G, agents, a_id, y, p_yx_actual)  
+                                    else:
+                                        
+                                        _move_agent(G, agents, a_id, w, p_wz_actual)  
+                                        _move_agent(G, agents, a_id, z, p_zy_actual)  
+                                        _move_agent(G, agents, a_id, y, p_yx_actual)  
+
+                                        c_found = None
+                                        for c_id in scout_ids_sorted:
+                                            c = agents[c_id]
+                                            if c.scoutP1Neighbor == xi_w and c.scoutPortAtP1Neighbor == p_wz_actual:
+                                                c_found = c_id
+                                                break
+
+                                        if c_found is None:
+                                            psi_y_id = None
+                                        else:
+                                            b_found = None
+                                            for b_id in scout_ids_sorted:
+                                                b = agents[b_id]
+                                                if b.scoutP1Neighbor == c_found and b.scoutPortAtP1Neighbor == p_zy_actual:
+                                                    b_found = b_id
+                                                    break
+                                            psi_y_id = b_found
+
+            
+            if psi_y_id is None:
+                nodeType_y = "unvisited"
+            elif psi_y_id in A_scout:
+                b = agents[psi_y_id]
+                nodeType_y = b.scoutResult[2] if b.scoutResult is not None else "unvisited"
+            else:
+                nodeType_y = _node_type_of_psi(agents, psi_y_id)
+            a.scoutResult = (actual_port, a.scoutEdgeType, nodeType_y, psi_y_id)
+
+            j += 1
+
+        psi_x.checked += Delta_prime
+        psi_x.probeResult = _choose_best_probe_result(agents, scout_ids_sorted, port_one=port_one)
+
+    if psi_x.probeResult is None:
+        return None
+
+    p_xy, _, __, ___ = psi_x.probeResult
+    return p_xy
 
 
-        agents_by_node = defaultdict(list)
-        for a in agents:
-            agents_by_node[a.currentnode].append(a)
 
-        for node, agents_at_node in agents_by_node.items():
-            if len(agents_at_node) > 1:
-                print(f'Electing leader at {node}: {[a.id for a in agents_at_node]}')
-                leader = elect_leader(G, agents_at_node)
-                print(f'Increase level at {node}: {[(a.id,(a.state['leader'].id,a.state['level']) ) for a in agents_at_node]}')
-                if leader is not None:
-                    increase_level(G, agents_at_node, leader)
-        # positions, statuses = snapshot("elect_leader")
+def retrace(G, agents, A_vacated , port_one = PORT_ONE):
+    """
+    Algorithm 6: Retrace()
+    Input: A_vacated - set of agents with state settledScout
+    Side-effects: moves A_vacated group post-order and re-settles them at VACATED nodes.
+    """
+    _ensure_node_fields(G)
+    while A_vacated:
+        amin_id = min(A_vacated)
+        amin = agents[amin_id]
+        v = amin.node
 
-        for a in agents:
-            if a.state['role'] == AgentRole['LEADER']:
-                settle_an_agent(G, a)
-        # positions, statuses = snapshot("settle_an_agent")
+        if _psi_id(G, v) is None:
+            target_id = amin.nextAgentID
+            chosen_id = None
+            if target_id is not None and target_id in A_vacated and agents[target_id].node == v:
+                chosen_id = target_id
+            else:
+                target_id = amin.nextAgentID
+                if target_id is None or target_id not in A_vacated or agents[target_id].node != v:
+                    raise RuntimeError("Retrace invariant violated: required amin.nextAgentID agent not at current node")
+                chosen_id = target_id
+                a = agents[chosen_id]
+            a = agents[chosen_id]
+            a.state = "settled"
+            G.nodes[v]["settled_agent"] = a.ID
+            G.nodes[v]["vacated"] = False
+            A_vacated.remove(a.ID)
+            if not A_vacated:
+                break
+            amin_id = min(A_vacated)
+            amin = agents[amin_id]
 
-        for a in agents:
-            if a.state['role'] == AgentRole['HELPER']:
-                move_to_scout(G, a)
-        positions, statuses = snapshot("move_to_scout")
-
-        for a in agents:
-            if a.state['role'] == AgentRole['HELPER']:
-                ensure_scout(G, a)
-            if a.state['role'] == AgentRole['LEADER']:
-                scout_forward(G, a)
-        positions, statuses = snapshot("scout_forward") # unnecessary! remove later
-
-        for a in agents:
-            if a.scout_forward == True:
-                scout_neighbor(G, a)
-        positions, statuses = snapshot("scout_neighbor")
-
-        for a in agents:
-            if a.scout_return == True:
-                scout_return(G, a)
-        positions, statuses = snapshot("scout_return")
-
-        for a in agents:
-            if a.state['role'] == AgentRole['LEADER']:
-                check_scout_result(G, a)
-        positions, statuses = snapshot("check_scout_result")
-
-        for a in agents:
-            if a.going_to_help == True:
-                helper_return(G, a)
-        positions, statuses = snapshot("helper_return")
-
-        for a in agents:
-            if a.state['role'] == AgentRole['CHASER']:
-                chase_leader(G, a)
-        positions, statuses = snapshot("chase_leader")
-
-        for a in agents:
-            if a.state['role'] == AgentRole['LEADER']:
-                follow_leader(G, a)
-        positions, statuses = snapshot("follow_leader")
-
-        if positions == old_positions and statuses == old_statuses:
-            print(f'round Number {round_number - 1}: No change in positions and statuses')
-            print(positions)
-            print(statuses)
-            repeat_count += 1
-        else:
-            repeat_count = 0
-        if repeat_count > 10:
+        if not A_vacated:
             break
 
-        old_positions = positions
-        old_statuses = statuses
+        psi_v_id = _psi_id(G, v)
+        psi_v = agents[psi_v_id]
+        if psi_v.recentChild is not None:
+            if psi_v.recentChild == amin.arrivalPort:
+                if amin.siblingDetails is None:
+                    psi_v.recentChild = None
+                    if psi_v.parent is not None:
+                        amin.nextAgentID, amin.nextPort = psi_v.parent
+                    else:
+                        amin.nextAgentID, amin.nextPort = None, None
+                    amin.siblingDetails = psi_v.sibling
+                else:
+                    amin.nextAgentID, amin.nextPort = amin.siblingDetails
+                    amin.siblingDetails = None   
+                    psi_v.recentChild = amin.nextPort
+            else:
+                amin.nextPort = psi_v.recentChild
+                found = None
+                for aid in A_vacated:
+                    aa = agents[aid]
+                    if aa.parent == (psi_v.ID, psi_v.recentChild):
+                        found = aid
+                        break
+                
+                if found is not None:
+                    amin.nextAgentID = found
+                    amin.nextPort = psi_v.recentChild
+                else:
+                    parentID, _portAtParent = psi_v.parent if psi_v.parent is not None else (None, None)
+                    amin.nextAgentID = parentID
+                    amin.nextPort = psi_v.parentPort
+                    amin.siblingDetails = psi_v.sibling 
 
-    return all_positions, all_statuses, all_leader_ids, all_leader_levels, all_node_settled_states
+        else:
+            
+            if psi_v.parent is not None:
+                parentID, _portAtParent = psi_v.parent
+            else:
+                parentID, _portAtParent = None, None
+            
+            amin.nextAgentID = parentID
+            
+            amin.nextPort = psi_v.parentPort
+            
+            amin.siblingDetails = psi_v.sibling
+
+        
+        if amin.nextPort is None:
+            break
+
+        _move_group(G, agents, A_vacated, v, amin.nextPort)
+
+
+def _move_agent(G, agents, agent_id, from_node, out_port):
+    """
+    Move agent from from_node via out_port to neighbor, updating:
+      - node membership sets
+      - agent.node
+      - agent.arrivalPort at the new node (port leading back)
+    """
+    to_node = _port_neighbor(G, from_node, out_port)
+    if to_node is None:
+        raise ValueError(f"Invalid port {out_port} at node {from_node}")
+
+    
+    G.nodes[from_node]["agents"].discard(agent_id)
+    G.nodes[to_node]["agents"].add(agent_id)
+
+    
+    a = agents[agent_id]
+    a.node = to_node
+    a.arrivalPort = _port(G, to_node, from_node)  
+
+    return to_node
+
+
+def _move_group(G, agents, agent_ids, from_node, out_port):
+    """Move all agents in agent_ids from from_node through out_port."""
+    to_node = _port_neighbor(G, from_node, out_port)
+    if to_node is None:
+        raise ValueError(f"Invalid port {out_port} at node {from_node}")
+
+    for aid in list(agent_ids):
+        _move_agent(G, agents, aid, from_node, out_port)
+
+    return to_node
+
+
+def rooted_async(G, agents, root_node):
+    """
+    Algorithm 5: RootedAsync()
+
+    Input:
+      - G: port-labeled graph
+      - agents: dict[int, Agent]
+      - root_node: v0
+
+    Output:
+      - None (modifies agents and G in-place)
+    """
+    _ensure_node_fields(G)
+    for u in G.nodes():
+        G.nodes[u]["agents"].clear()
+        G.nodes[u]["settled_agent"] = None
+        G.nodes[u]["vacated"] = False
+    _T_p1, node_type_map, _parent_map = dfs_p1tree(G, root_node, port_one=PORT_ONE)
+    for u in G.nodes():
+        G.nodes[u]["final_nodeType"] = node_type_map[u]   
+    
+    A = set(agents.keys())
+
+    
+    
+    for aid in A:
+        a = agents[aid]
+        a.state = "unsettled"
+        a.arrivalPort = None
+        a.treeLabel = None
+        a.nodeType = None
+        a.parent = None
+        a.parentPort = None
+        a.P1Neighbor = None
+        a.portAtP1Neighbor = None
+        a.vacatedNeighbor = False
+        a.recentChild = None
+        a.sibling = None
+        a.recentPort = None
+        a.probeResult = None
+        a.checked = 0
+        
+        a.scoutPort = None
+        a.scoutEdgeType = None
+        a.scoutP1Neighbor = None
+        a.scoutPortAtP1Neighbor = None
+        a.scoutP1P1Neighbor = None
+        a.scoutPortAtP1P1Neighbor = None
+        a.scoutResult = None
+        a.prevID = None
+        a.childPort = None
+        a.siblingDetails = None
+        a.childDetails = None
+        a.nextAgentID = None
+        a.nextPort = None        
+        if not hasattr(a, "portAtParent"):
+            a.portAtParent = None
+
+    for aid in A:
+        agents[aid].node = root_node
+        G.nodes[root_node]["agents"].add(aid)    
+    A_unsettled = set(A)
+    A_vacated = set()
+
+    while A_unsettled:
+        any_id = next(iter(A_unsettled))
+        v = agents[any_id].node
+        A_scout = set(A_unsettled) | set(A_vacated)
+        amin_id = min(A_scout)
+        amin = agents[amin_id]
+
+        
+        if G.nodes[v].get("settled_agent") is None and not G.nodes[v].get("vacated", False):
+            psi_id = _pick_highest_id(A_unsettled)
+            if psi_id is None:
+                break
+            _settle_at(G, agents, psi_id, v)
+            psi_v = agents[psi_id]
+            psi_v.nodeType = G.nodes[v].get("final_nodeType", "visited")
+            psi_v.vacatedNeighbor = False
+            psi_v.recentChild = None
+            psi_v.recentPort = None
+            psi_v.checked = 0
+            psi_v.probeResult = None            
+            psi_v.parent = (amin.prevID, amin.childPort)
+            psi_v.portAtParent = amin.childPort  
+            amin.childPort = None
+            psi_v.parentPort = amin.arrivalPort
+            A_unsettled.remove(psi_id)
+            if not A_unsettled:
+                break
+
+        psi_v = _psi(G, agents, v)
+        if psi_v is None:
+            raise RuntimeError("Invariant broken: ψ(v) should exist here")
+
+        amin.prevID = psi_v.ID
+
+        k = len(A)
+        delta_v = G.degree[v]
+        if delta_v >= k - 1:
+            parallel_probe(G, agents, v, A_scout, port_one=PORT_ONE, max_ports=k - 1)
+            empty_ports = []
+            for aid in sorted(A_scout):
+                a = agents[aid]
+                if a.scoutResult is None:
+                    continue
+                pxy, _et, _nodeType_y, psi_y_id = a.scoutResult
+                if psi_y_id is None:
+                    nb = _port_neighbor(G, v, pxy)
+                    if nb is not None:
+                        empty_ports.append((pxy, nb))
+
+            empty_ports.sort(key=lambda t: t[0])  
+            
+            for (port, nb), aid in zip(empty_ports, sorted(A_unsettled)):
+                _move_agent(G, agents, aid, v, port)
+                _settle_at(G, agents, aid, nb)
+                a = agents[aid]
+                a.parent = (psi_v.ID, port)
+                a.portAtParent = port
+                a.parentPort = _port(G, nb, v)
+
+            
+            for _, nb in empty_ports[: min(len(empty_ports), len(A_unsettled))]:
+                sid = G.nodes[nb]["settled_agent"]
+                if sid in A_unsettled:
+                    A_unsettled.remove(sid)
+            break
+        psi_v.sibling = amin.siblingDetails
+        amin.siblingDetails = None
+        nextPort = parallel_probe(G, agents, v, A_scout, port_one=PORT_ONE)
+        if nextPort is None:
+            psi_v.nodeType = G.nodes[v].get("final_nodeType", psi_v.nodeType)
+        
+        psi_v.state = can_vacate(G, agents, v, A_vacated, port_one=PORT_ONE)
+        A_scout = set(A_unsettled) | set(A_vacated)
+        
+        if psi_v.state == "settledScout":
+            G.nodes[v]["vacated"] = True
+            G.nodes[v]["settled_agent"] = None
+        if psi_v.state == "settledScout":
+            A_vacated.add(psi_v.ID)
+            A_scout = set(A_unsettled) | set(A_vacated)        
+        if nextPort is not None:
+            psi_v.recentPort = nextPort
+            amin.childPort = nextPort
+            if psi_v.recentChild is None:
+                psi_v.recentChild = nextPort
+            else:
+                amin.siblingDetails = amin.childDetails
+                amin.childDetails = None
+                psi_v.recentChild = nextPort
+            new_node = _move_group(G, agents, A_scout, v, nextPort)
+            if psi_v.probeResult is not None:
+                _pxy, et, _nty, _psi_y_id = psi_v.probeResult
+                if et in ("tp1", "t11"):
+                    psi_y = _psi(G, agents, new_node)
+        else:
+            amin.childDetails = (psi_v.ID, psi_v.portAtParent)
+            amin.childPort = None
+            psi_v.recentPort = psi_v.parentPort
+            if psi_v.parentPort is None:   
+                break
+            new_node = _move_group(G, agents, A_scout, v, psi_v.parentPort)
+    
+    retrace(G, agents, A_vacated)
