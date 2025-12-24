@@ -214,21 +214,6 @@ def edge_type(G, u, v, port_one=PORT_ONE):
     return "tpq"
 
 
-def _sorted_incident_edges(G, u, port_one=PORT_ONE):
-    """
-    Return incident edges (u,v) sorted by Algorithm 2 "edge-priority":
-      tp1  >  (t11 ~ t1q)  >  tpq
-    and within each type: smallest incident port number at u first.
-    """
-    pr = {"tp1": 0, "t11": 1, "t1q": 1, "tpq": 2}
-    items = []
-    for v in G.neighbors(u):
-        et = edge_type(G, u, v, port_one=port_one)
-        items.append((pr[et], _port(G, u, v), v, et))
-    items.sort()
-    return items
-
-
 def _port_neighbor(G, x, port):
     """Return neighbor of node x via local port number `port` (or None)."""
     return G.nodes[x].get("port_map", {}).get(port)
@@ -283,73 +268,6 @@ def _settle_at(G, agents, agent_id, v):
     G.nodes[v]["vacated"] = False
 
     _snap(f"settle(a={agent_id},v={v})", G, agents)  # NEW
-
-
-def dfs_p1tree(G, v0, port_one=PORT_ONE):
-    """
-    Algorithm 2: DFS_P1Tree(v0, G)
-    """
-    T = nx.Graph()
-    T.add_nodes_from(G.nodes())
-
-    node_type = {u: "unvisited" for u in G.nodes()}
-    parent = {u: None for u in G.nodes()}
-
-    S = []
-    S.append(v0)
-    node_type[v0] = "visited"
-
-    def has_priority_edge_in_T(u: int) -> bool:
-        for x in T.neighbors(u):
-            if edge_type(G, u, x, port_one=port_one) in {"tp1", "t11", "t1q"}:
-                return True
-        return False
-
-    while S:
-        u = S[-1]
-        e_next = None
-        inc = _sorted_incident_edges(G, u, port_one=port_one)
-
-        for _, __, v, et in inc:
-            if node_type[v] == "unvisited":
-                e_next = v
-                break
-            else:
-                if node_type[v] == "partiallyVisited" and et in {"tp1", "t11"}:
-                    e_next = v
-                    break
-
-        if e_next is not None:
-            v = e_next
-            et_e = edge_type(G, u, v, port_one=port_one)
-
-            et_parent = None
-            w = parent[u]
-            if w is not None:
-                et_parent = edge_type(G, w, u, port_one=port_one)
-
-            if (
-                w is not None
-                and et_e == "tpq"
-                and et_parent == "tpq"
-                and (not has_priority_edge_in_T(u))
-            ):
-                node_type[u] = "partiallyVisited"
-                S.pop()
-            else:
-                parent[v] = u
-                T.add_edge(u, v)
-                T[u][v]["p_uv"] = _port(G, u, v)
-                T[u][v]["p_vu"] = _port(G, v, u)
-                T[u][v]["edgeType"] = et_e
-
-                S.append(v)
-                node_type[v] = "visited"
-        else:
-            node_type[u] = "fullyVisited"
-            S.pop()
-
-    return T, node_type, parent
 
 
 def can_vacate(G, agents, x, A_vacated, port_one=PORT_ONE):
@@ -431,13 +349,6 @@ def can_vacate(G, agents, x, A_vacated, port_one=PORT_ONE):
     return "settled"
 
 
-def _node_type_of_psi(agents, psi_id):
-    if psi_id is None:
-        return "unvisited"
-    nt = agents[psi_id].nodeType
-    return nt if nt is not None else "unvisited"
-
-
 def _choose_best_probe_result(agents, scout_ids, port_one=PORT_ONE):
     node_pr = {
         "unvisited": 0,
@@ -463,24 +374,35 @@ def _choose_best_probe_result(agents, scout_ids, port_one=PORT_ONE):
 
 def parallel_probe(G, agents, x, A_scout, port_one=PORT_ONE, max_ports=None):
     """
-    Algorithm 4: Parallel_Probe()
+    Algorithm 4: Parallel Probe()
+    NOTE: Paper ports are 1-indexed; this code is 0-indexed.
+          paper_port = actual_port + 1
     """
-    _snap(f"parallel_probe:enter(x={x})", G, agents)  # NEW
+    _snap(f"parallel_probe:enter(x={x})", G, agents)
 
     if not A_scout:
-        raise ValueError("parallel_probe requires a non-empty A_scout")
+        raise ValueError("parallel_probe requires non-empty A_scout")
 
     psi_x_id = G.nodes[x].get("settled_agent")
     if psi_x_id is None:
         raise ValueError(f"parallel_probe called at x={x} with no settled agent ψ(x)")
     psi_x = agents[psi_x_id]
 
+    # Paper line 1
+    psi_x.probeResult = None
+    psi_x.checked = 0
+
     scout_ids_sorted = sorted(list(A_scout))
     s = len(scout_ids_sorted)
-    delta_x = G.degree[x]
 
-    exclude_ids = set(scout_ids_sorted)
+    # δx (degree at x)
+    delta_x = len(G.nodes[x].get("port_map", {}))
+    target = delta_x if max_ports is None else min(delta_x, max_ports)
+    if target == 0:
+        _snap(f"parallel_probe:exit(x={x},p=None)", G, agents)
+        return None
 
+    # reset scout temps
     for sid in scout_ids_sorted:
         a = agents[sid]
         a.scoutPort = None
@@ -491,24 +413,26 @@ def parallel_probe(G, agents, x, A_scout, port_one=PORT_ONE, max_ports=None):
         a.scoutPortAtP1P1Neighbor = None
         a.scoutResult = None
 
-    target = delta_x if max_ports is None else min(delta_x, max_ports)
+    exclude_ids = set(scout_ids_sorted)
 
     while psi_x.checked < target:
         remaining = target - psi_x.checked
         Delta_prime = min(s, remaining)
+
         scout_iter_idx = 0
-        j = 1
+        j = 1  # paper loop variable
 
         while j <= Delta_prime and scout_iter_idx < s:
             a_id = scout_ids_sorted[scout_iter_idx]
             scout_iter_idx += 1
             a = agents[a_id]
 
-            paper_port = psi_x.checked + j
-            actual_port = paper_port - 1
+            paper_port = psi_x.checked + j          # 1..target
+            actual_port = paper_port - 1            # 0..target-1
 
-            if psi_x.parentPort is not None:
-                parent_paper_port = psi_x.parentPort + 1
+            # Paper lines 7–8: skip parent port (stored as 0-index)
+            if psi_x.parent is not None and psi_x.parent[1] is not None:
+                parent_paper_port = psi_x.parent[1] + 1
                 if parent_paper_port == paper_port:
                     j += 1
                     remaining = target - psi_x.checked
@@ -516,51 +440,55 @@ def parallel_probe(G, agents, x, A_scout, port_one=PORT_ONE, max_ports=None):
                     paper_port = psi_x.checked + j
                     actual_port = paper_port - 1
 
-            a.scoutPort = actual_port
-            y = _port_neighbor(G, x, actual_port)
-            if y is None:
-                a.scoutEdgeType = None
-                a.scoutResult = (actual_port, None, "unvisited", None)
+            # guard
+            if actual_port < 0 or actual_port >= target:
+                a.scoutResult = None
                 j += 1
                 continue
 
+            a.scoutPort = actual_port
+            y = _port_neighbor(G, x, actual_port)
+            if y is None:
+                # should not happen if your port_map is correct; ignore safely
+                a.scoutResult = None
+                j += 1
+                continue
+
+            # Paper line 10: move to y
             _move_agent(G, agents, a_id, x, actual_port)
 
+            # Paper line 11
             a.scoutEdgeType = edge_type(G, x, y, port_one=port_one)
-
-            p_yx_actual = _port(G, y, x)
-            p_yx_paper = p_yx_actual + 1
 
             xi_y = _xi(G, y, exclude_ids=exclude_ids)
             psi_y_id = None
 
             if xi_y is not None:
+                # found settled agent at y
                 psi_y_id = xi_y
-                _move_agent(G, agents, a_id, y, p_yx_actual)
-
+                _move_agent(G, agents, a_id, y, _port(G, y, x))
             else:
-                if p_yx_paper == 1:
+                # no settled agent at y: follow paper's P1 checks
+                pyx_actual = _port(G, y, x)
+                if pyx_actual == port_one:
                     psi_y_id = None
-                    _move_agent(G, agents, a_id, y, p_yx_actual)
-
+                    _move_agent(G, agents, a_id, y, pyx_actual)
                 else:
                     z = _port_neighbor(G, y, port_one)
                     if z is None:
                         psi_y_id = None
-                        _move_agent(G, agents, a_id, y, p_yx_actual)
+                        _move_agent(G, agents, a_id, y, pyx_actual)
                     else:
                         _move_agent(G, agents, a_id, y, port_one)
-
                         xi_z = _xi(G, z, exclude_ids=exclude_ids)
                         p_zy_actual = _port(G, z, y)
-                        p_zy_paper = p_zy_actual + 1
 
                         a.scoutP1Neighbor = xi_z
                         a.scoutPortAtP1Neighbor = p_zy_actual
 
                         if xi_z is not None:
                             _move_agent(G, agents, a_id, z, p_zy_actual)
-                            _move_agent(G, agents, a_id, y, p_yx_actual)
+                            _move_agent(G, agents, a_id, y, pyx_actual)
 
                             b_found = None
                             for b_id in scout_ids_sorted:
@@ -569,37 +497,32 @@ def parallel_probe(G, agents, x, A_scout, port_one=PORT_ONE, max_ports=None):
                                     b_found = b_id
                                     break
                             psi_y_id = b_found
-
                         else:
-                            if p_zy_paper == 1:
+                            if p_zy_actual == port_one:
                                 psi_y_id = None
                                 _move_agent(G, agents, a_id, z, p_zy_actual)
-                                _move_agent(G, agents, a_id, y, p_yx_actual)
+                                _move_agent(G, agents, a_id, y, pyx_actual)
                             else:
                                 w = _port_neighbor(G, z, port_one)
                                 if w is None:
                                     psi_y_id = None
                                     _move_agent(G, agents, a_id, z, p_zy_actual)
-                                    _move_agent(G, agents, a_id, y, p_yx_actual)
+                                    _move_agent(G, agents, a_id, y, pyx_actual)
                                 else:
                                     _move_agent(G, agents, a_id, z, port_one)
-
                                     xi_w = _xi(G, w, exclude_ids=exclude_ids)
                                     p_wz_actual = _port(G, w, z)
 
                                     a.scoutP1P1Neighbor = xi_w
                                     a.scoutPortAtP1P1Neighbor = p_wz_actual
 
+                                    _move_agent(G, agents, a_id, w, p_wz_actual)
+                                    _move_agent(G, agents, a_id, z, p_zy_actual)
+                                    _move_agent(G, agents, a_id, y, pyx_actual)
+
                                     if xi_w is None:
                                         psi_y_id = None
-                                        _move_agent(G, agents, a_id, w, p_wz_actual)
-                                        _move_agent(G, agents, a_id, z, p_zy_actual)
-                                        _move_agent(G, agents, a_id, y, p_yx_actual)
                                     else:
-                                        _move_agent(G, agents, a_id, w, p_wz_actual)
-                                        _move_agent(G, agents, a_id, z, p_zy_actual)
-                                        _move_agent(G, agents, a_id, y, p_yx_actual)
-
                                         c_found = None
                                         for c_id in scout_ids_sorted:
                                             c = agents[c_id]
@@ -618,72 +541,77 @@ def parallel_probe(G, agents, x, A_scout, port_one=PORT_ONE, max_ports=None):
                                                     break
                                             psi_y_id = b_found
 
+            # determine nodeType_y
             if psi_y_id is None:
                 nodeType_y = "unvisited"
             elif psi_y_id in A_scout:
+                # if ψ(y) is a scout, use whatever it has (or treat as unvisited)
                 b = agents[psi_y_id]
                 nodeType_y = b.scoutResult[2] if b.scoutResult is not None else "unvisited"
             else:
-                nodeType_y = _node_type_of_psi(agents, psi_y_id)
+                nodeType_y = agents[psi_y_id].nodeType if agents[psi_y_id].nodeType is not None else "unvisited"
 
+            # Paper line 51
             a.scoutResult = (actual_port, a.scoutEdgeType, nodeType_y, psi_y_id)
 
             j += 1
 
+        # Paper line 52–53
         psi_x.checked += Delta_prime
         psi_x.probeResult = _choose_best_probe_result(agents, scout_ids_sorted, port_one=port_one)
 
     if psi_x.probeResult is None:
-        _snap(f"parallel_probe:exit(x={x},p=None)", G, agents)  # NEW
+        _snap(f"parallel_probe:exit(x={x},p=None)", G, agents)
         return None
 
-    p_xy, _, __, ___ = psi_x.probeResult
-    _snap(f"parallel_probe:exit(x={x},p={p_xy})", G, agents)  # NEW
+    p_xy, _et, nodeType_y, _psi_y = psi_x.probeResult
+
+    # REQUIRED so RootedAsync can backtrack (paper implies ⊥ when all are fullyVisited)
+    if nodeType_y == "fullyVisited":
+        _snap(f"parallel_probe:exit(x={x},p=None)", G, agents)
+        return None
+
+    _snap(f"parallel_probe:exit(x={x},p={p_xy})", G, agents)
     return p_xy
 
 
 def retrace(G, agents, A_vacated, port_one=PORT_ONE):
     """
     Algorithm 6: Retrace()
+    Input: A_vacated = set of agent IDs with state settledScout
     """
     _ensure_node_fields(G)
-    _snap("retrace:enter", G, agents)  # NEW
+    _snap("retrace:enter", G, agents)
 
     while A_vacated:
         amin_id = min(A_vacated)
         amin = agents[amin_id]
         v = amin.node
 
-        _snap(f"retrace:loop(v={v},amin={amin_id})", G, agents)  # NEW
-
+        # Paper lines 4–11: if ξ(v)=⊥ then settle the specific vacated agent amin.nextAgentID at v
         if _psi_id(G, v) is None:
-            # Choose an agent from A_vacated that is physically at v
-            here = [aid for aid in A_vacated if agents[aid].node == v]
-            if not here:
-                raise RuntimeError(f"Retrace invariant violated: no vacated agent is at node {v} to settle it")
+            target_id = amin.nextAgentID
+            if target_id is None or target_id not in A_vacated or agents[target_id].node != v:
+                # safe fallback to avoid crashes if metadata got corrupted
+                candidates = [aid for aid in A_vacated if agents[aid].node == v]
+                if not candidates:
+                    raise RuntimeError("Retrace invariant violated: no vacated agent at current node")
+                target_id = min(candidates)
 
-            chosen_id = min(here)  # deterministic; usually what you want
-            a = agents[chosen_id]
-
+            a = agents[target_id]
             a.state = "settled"
+            A_vacated.remove(a.ID)
             G.nodes[v]["settled_agent"] = a.ID
             G.nodes[v]["vacated"] = False
-            A_vacated.remove(a.ID)
-
-            _snap(f"retrace:settle_back(a={a.ID},v={v})", G, agents)  # NEW
 
             if not A_vacated:
                 break
-
             amin_id = min(A_vacated)
             amin = agents[amin_id]
-            v = amin.node
 
-        if not A_vacated:
-            break
+        psi_v = agents[_psi_id(G, v)]
 
-        psi_v_id = _psi_id(G, v)
-        psi_v = agents[psi_v_id]
+        # Paper logic: compute (amin.nextAgentID, amin.nextPort)
         if psi_v.recentChild is not None:
             if psi_v.recentChild == amin.arrivalPort:
                 if amin.siblingDetails is None:
@@ -691,7 +619,7 @@ def retrace(G, agents, A_vacated, port_one=PORT_ONE):
                     if psi_v.parent is not None:
                         amin.nextAgentID, amin.nextPort = psi_v.parent
                     else:
-                        amin.nextAgentID, amin.nextPort = None, None
+                        amin.nextAgentID, amin.nextPort = (None, None)
                     amin.siblingDetails = psi_v.sibling
                 else:
                     amin.nextAgentID, amin.nextPort = amin.siblingDetails
@@ -701,11 +629,9 @@ def retrace(G, agents, A_vacated, port_one=PORT_ONE):
                 amin.nextPort = psi_v.recentChild
                 found = None
                 for aid in A_vacated:
-                    aa = agents[aid]
-                    if aa.parent == (psi_v.ID, psi_v.recentChild):
+                    if agents[aid].parent == (psi_v.ID, psi_v.recentChild):
                         found = aid
                         break
-
                 if found is not None:
                     amin.nextAgentID = found
                     amin.nextPort = psi_v.recentChild
@@ -714,13 +640,8 @@ def retrace(G, agents, A_vacated, port_one=PORT_ONE):
                     amin.nextAgentID = parentID
                     amin.nextPort = psi_v.parentPort
                     amin.siblingDetails = psi_v.sibling
-
         else:
-            if psi_v.parent is not None:
-                parentID, _portAtParent = psi_v.parent
-            else:
-                parentID, _portAtParent = None, None
-
+            parentID, _portAtParent = psi_v.parent if psi_v.parent is not None else (None, None)
             amin.nextAgentID = parentID
             amin.nextPort = psi_v.parentPort
             amin.siblingDetails = psi_v.sibling
@@ -728,14 +649,16 @@ def retrace(G, agents, A_vacated, port_one=PORT_ONE):
         if amin.nextPort is None:
             break
 
+        # Paper final move
         _move_group(G, agents, A_vacated, v, amin.nextPort)
 
-    _snap("retrace:exit", G, agents)  # NEW
+    _snap("retrace:exit", G, agents)
 
 
-def _move_agent(G, agents, agent_id, from_node, out_port):
+def _move_agent(G, agents, agent_id, from_node, out_port, *, snap=True):
     """
     Move agent from from_node via out_port to neighbor.
+    If snap=False, we do not snapshot this individual move (used by _move_group).
     """
     to_node = _port_neighbor(G, from_node, out_port)
     if to_node is None:
@@ -748,56 +671,59 @@ def _move_agent(G, agents, agent_id, from_node, out_port):
     a.node = to_node
     a.arrivalPort = _port(G, to_node, from_node)
 
-    _snap(f"move_agent(a={agent_id},from={from_node},p={out_port},to={to_node})", G, agents)  # NEW
+    if snap:
+        _snap(f"move_agent(a={agent_id},from={from_node},p={out_port},to={to_node})", G, agents)
+
     return to_node
 
 
 def _move_group(G, agents, agent_ids, from_node, out_port):
-    """Move all agents in agent_ids from from_node through out_port."""
+    """Move all agents in agent_ids from from_node through out_port with ONE snapshot."""
     to_node = _port_neighbor(G, from_node, out_port)
     if to_node is None:
         raise ValueError(f"Invalid port {out_port} at node {from_node}")
 
-    # optional group-level snap (movement snaps also happen per-agent)
-    _snap(f"move_group(from={from_node},p={out_port},to={to_node},|A|={len(agent_ids)})", G, agents)  # NEW
+    # single group-level snapshot
+    _snap(f"move_group(from={from_node},p={out_port},to={to_node},|A|={len(agent_ids)})", G, agents)
 
     for aid in list(agent_ids):
-        _move_agent(G, agents, aid, from_node, out_port)
+        _move_agent(G, agents, aid, from_node, out_port, snap=False)
 
     return to_node
 
 
-def rooted_async(G, agents, root_node):
+def rooted_async(G, agents, root_node, port_one=PORT_ONE):
     """
     Algorithm 5: RootedAsync()
+    Paper-faithful control flow:
+      - NO dfs_p1tree / NO precomputed final_nodeType
+      - Calls Retrace() after each backtrack (paper line 47) and at end
     """
     _ensure_node_fields(G)
-    _init_ports(G)  # NEW safety: ensure port_map exists
-
-    _snap(f"rooted_async:enter(root={root_node})", G, agents)  # NEW
+    _init_ports(G)
+    _snap(f"rooted_async:enter(root={root_node})", G, agents)
 
     for u in G.nodes():
         G.nodes[u]["agents"].clear()
         G.nodes[u]["settled_agent"] = None
         G.nodes[u]["vacated"] = False
 
-    _T_p1, node_type_map, _parent_map = dfs_p1tree(G, root_node, port_one=PORT_ONE)
-    for u in G.nodes():
-        G.nodes[u]["final_nodeType"] = node_type_map[u]
-
     A = set(agents.keys())
 
+    # Paper line 2: init all variables to ⊥
     for aid in A:
         a = agents[aid]
         a.state = "unsettled"
         a.arrivalPort = None
         a.treeLabel = None
+
         a.nodeType = None
         a.parent = None
         a.parentPort = None
         a.P1Neighbor = None
         a.portAtP1Neighbor = None
         a.vacatedNeighbor = False
+
         a.recentChild = None
         a.sibling = None
         a.recentPort = None
@@ -811,113 +737,118 @@ def rooted_async(G, agents, root_node):
         a.scoutP1P1Neighbor = None
         a.scoutPortAtP1P1Neighbor = None
         a.scoutResult = None
+
         a.prevID = None
         a.childPort = None
         a.siblingDetails = None
         a.childDetails = None
         a.nextAgentID = None
         a.nextPort = None
+
         if not hasattr(a, "portAtParent"):
             a.portAtParent = None
 
+    # place all agents at root
     for aid in A:
         agents[aid].node = root_node
         G.nodes[root_node]["agents"].add(aid)
 
-    A_unsettled = set(A)
-    A_vacated = set()
+    A_unsettled = set(A)   # paper line 5
+    A_vacated = set()      # paper line 6
 
-    _snap("rooted_async:initialized", G, agents)  # NEW
+    _snap("rooted_async:initialized", G, agents)
 
     while A_unsettled:
-        any_id = next(iter(A_unsettled))
-        v = agents[any_id].node
+        v = agents[min(A_unsettled | A_vacated)].node
         A_scout = set(A_unsettled) | set(A_vacated)
-        amin_id = min(A_scout)
-        amin = agents[amin_id]
+        amin = agents[min(A_scout)]
 
-        if G.nodes[v].get("settled_agent") is None and not G.nodes[v].get("vacated", False):
+        # Paper lines 11–24
+        if G.nodes[v].get("settled_agent") is None:
             psi_id = _pick_highest_id(A_unsettled)
-            if psi_id is None:
-                break
             _settle_at(G, agents, psi_id, v)
             psi_v = agents[psi_id]
-            psi_v.nodeType = G.nodes[v].get("final_nodeType", "visited")
+            psi_v.state = "settled"
+            psi_v.nodeType = "visited"
             psi_v.vacatedNeighbor = False
             psi_v.recentChild = None
+            psi_v.sibling = None
             psi_v.recentPort = None
-            psi_v.checked = 0
             psi_v.probeResult = None
+            psi_v.checked = 0
+
+            # parent pointers (paper lines 14–19)
             psi_v.parent = (amin.prevID, amin.childPort)
             psi_v.portAtParent = amin.childPort
             amin.childPort = None
             psi_v.parentPort = amin.arrivalPort
-            A_unsettled.remove(psi_id)
 
-            _snap(f"rooted_async:settled(psi={psi_id},v={v})", G, agents)  # NEW
+            A_unsettled.remove(psi_id)
+            _snap(f"rooted_async:settled(psi={psi_id},v={v})", G, agents)
             if not A_unsettled:
+                break
+
+            # paper line 20
+            amin.prevID = psi_v.ID
+
+            # paper lines 21–24: δ(v) >= k-1 special case
+            k = len(A)
+            delta_v = len(G.nodes[v].get("port_map", {}))
+            if delta_v >= k - 1:
+                parallel_probe(G, agents, v, set(A_unsettled) | set(A_vacated), port_one=port_one, max_ports=k - 1)
+
+                # settle remaining unsettled onto currently-probed empty neighbors (if any)
+                empties = []
+                for sid in sorted(set(A_unsettled) | set(A_vacated)):
+                    sr = agents[sid].scoutResult
+                    if sr is None:
+                        continue
+                    p_xy, _et, _nty, psi_y = sr
+                    if psi_y is None:
+                        nb = _port_neighbor(G, v, p_xy)
+                        if nb is not None:
+                            empties.append((p_xy, nb))
+                empties.sort(key=lambda t: t[0])
+
+                for (p, nb), uid in zip(empties, sorted(A_unsettled, reverse=True)):
+                    _move_agent(G, agents, uid, v, p)
+                    _settle_at(G, agents, uid, nb)
+                    agents[uid].nodeType = "visited"
+                    A_unsettled.remove(uid)
+                    if not A_unsettled:
+                        break
                 break
 
         psi_v = _psi(G, agents, v)
         if psi_v is None:
             raise RuntimeError("Invariant broken: ψ(v) should exist here")
 
-        amin.prevID = psi_v.ID
-
-        k = len(A)
-        delta_v = G.degree[v]
-        if delta_v >= k - 1:
-            parallel_probe(G, agents, v, A_scout, port_one=PORT_ONE, max_ports=k - 1)
-            empty_ports = []
-            for aid in sorted(A_scout):
-                a = agents[aid]
-                if a.scoutResult is None:
-                    continue
-                pxy, _et, _nodeType_y, psi_y_id = a.scoutResult
-                if psi_y_id is None:
-                    nb = _port_neighbor(G, v, pxy)
-                    if nb is not None:
-                        empty_ports.append((pxy, nb))
-
-            empty_ports.sort(key=lambda t: t[0])
-
-            for (port, nb), aid in zip(empty_ports, sorted(A_unsettled)):
-                _move_agent(G, agents, aid, v, port)
-                _settle_at(G, agents, aid, nb)
-                a = agents[aid]
-                a.parent = (psi_v.ID, port)
-                a.portAtParent = port
-                a.parentPort = _port(G, nb, v)
-
-            for _, nb in empty_ports[: min(len(empty_ports), len(A_unsettled))]:
-                sid = G.nodes[nb]["settled_agent"]
-                if sid in A_unsettled:
-                    A_unsettled.remove(sid)
-
-            _snap("rooted_async:degree_case_done", G, agents)  # NEW
-            break
-
+        # Paper lines 25–26
         psi_v.sibling = amin.siblingDetails
         amin.siblingDetails = None
 
-        nextPort = parallel_probe(G, agents, v, A_scout, port_one=PORT_ONE)
-        if nextPort is None:
-            psi_v.nodeType = G.nodes[v].get("final_nodeType", psi_v.nodeType)
+        # Paper line 27
+        nextPort = parallel_probe(G, agents, v, set(A_unsettled) | set(A_vacated), port_one=port_one)
 
-        psi_v.state = can_vacate(G, agents, v, A_vacated, port_one=PORT_ONE)
-        A_scout = set(A_unsettled) | set(A_vacated)
+        # Paper line 28
+        psi_v.state = can_vacate(G, agents, v, A_vacated, port_one=port_one)
 
+        # Paper lines 29–31
         if psi_v.state == "settledScout":
+            A_vacated.add(psi_v.ID)
             G.nodes[v]["vacated"] = True
             G.nodes[v]["settled_agent"] = None
 
-        if psi_v.state == "settledScout":
-            A_vacated.add(psi_v.ID)
-            A_scout = set(A_unsettled) | set(A_vacated)
+        A_scout = set(A_unsettled) | set(A_vacated)
 
+        # Paper lines 32–47
         if nextPort is not None:
+            if psi_v.nodeType == "visited":
+                psi_v.nodeType = "partiallyVisited"
+
             psi_v.recentPort = nextPort
             amin.childPort = nextPort
+
             if psi_v.recentChild is None:
                 psi_v.recentChild = nextPort
             else:
@@ -925,24 +856,29 @@ def rooted_async(G, agents, root_node):
                 amin.childDetails = None
                 psi_v.recentChild = nextPort
 
-            _snap(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents)  # NEW
-            new_node = _move_group(G, agents, A_scout, v, nextPort)
-            if psi_v.probeResult is not None:
-                _pxy, et, _nty, _psi_y_id = psi_v.probeResult
-                if et in ("tp1", "t11"):
-                    _ = _psi(G, agents, new_node)
+            _snap(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents)
+            _move_group(G, agents, A_scout, v, nextPort)
+
         else:
+            # no nextPort => fully visited, then backtrack
+            psi_v.nodeType = "fullyVisited"
+
             amin.childDetails = (psi_v.ID, psi_v.portAtParent)
             amin.childPort = None
             psi_v.recentPort = psi_v.parentPort
+
             if psi_v.parentPort is None:
                 break
 
-            _snap(f"rooted_async:backtrack(v={v},p={psi_v.parentPort})", G, agents)  # NEW
-            _ = _move_group(G, agents, A_scout, v, psi_v.parentPort)
+            _snap(f"rooted_async:backtrack(v={v},p={psi_v.parentPort})", G, agents)
+            _move_group(G, agents, A_scout, v, psi_v.parentPort)
 
-    retrace(G, agents, A_vacated)
-    _snap("rooted_async:exit", G, agents)  # NEW
+            # Paper line 47
+            retrace(G, agents, A_vacated, port_one=port_one)
+
+    # final Retrace (paper end)
+    retrace(G, agents, A_vacated, port_one=port_one)
+    _snap("rooted_async:exit", G, agents)
 
 
 # -----------------------------
