@@ -657,26 +657,27 @@ def retrace(G, agents, A_vacated, port_one=PORT_ONE):
         _snap(f"retrace:loop(v={v},amin={amin_id})", G, agents)  # NEW
 
         if _psi_id(G, v) is None:
-            target_id = amin.nextAgentID
-            chosen_id = None
-            if target_id is not None and target_id in A_vacated and agents[target_id].node == v:
-                chosen_id = target_id
-            else:
-                target_id = amin.nextAgentID
-                if target_id is None or target_id not in A_vacated or agents[target_id].node != v:
-                    raise RuntimeError("Retrace invariant violated: required amin.nextAgentID agent not at current node")
-                chosen_id = target_id
-                a = agents[chosen_id]
+            # Choose an agent from A_vacated that is physically at v
+            here = [aid for aid in A_vacated if agents[aid].node == v]
+            if not here:
+                raise RuntimeError(f"Retrace invariant violated: no vacated agent is at node {v} to settle it")
+
+            chosen_id = min(here)  # deterministic; usually what you want
             a = agents[chosen_id]
+
             a.state = "settled"
             G.nodes[v]["settled_agent"] = a.ID
             G.nodes[v]["vacated"] = False
             A_vacated.remove(a.ID)
+
             _snap(f"retrace:settle_back(a={a.ID},v={v})", G, agents)  # NEW
+
             if not A_vacated:
                 break
+
             amin_id = min(A_vacated)
             amin = agents[amin_id]
+            v = amin.node
 
         if not A_vacated:
             break
