@@ -155,6 +155,7 @@ def update_node_type_after_probe(G, x, psi_x, scout_results):
 def reconfigure_if_needed(agents, psi_x, port_to_w, psi_w, arrival_port_at_w):
     if psi_w.nodeType == "partiallyVisited" and arrival_port_at_w == PORT_ONE:
         psi_w.parent = (psi_x.ID, port_to_w)
+        print(f"[DBG_RECONF] psi_w={psi_w.ID}@{psi_w.node} NEW parent={psi_w.parent} parentPort={psi_w.parentPort}")
         psi_w.parentPort = PORT_ONE
         psi_w.nodeType = "visited"
 
@@ -216,6 +217,41 @@ def _move_group(G, agents, agent_ids, from_node, out_port):
         _move_agent(G, agents, aid, from_node, out_port, snap=False)
 
     return to_node
+
+def dbg_tree_check(G, agents, tag=""):
+    settled = [a for a in agents.values() if a.state == "settled"]
+    by_id = {a.ID: a for a in settled}
+    print(f"\n[DBG_TREE] {tag}  (#settled={len(settled)})")
+    for a in settled:
+        if a.parent is None or a.parent == BOTTOM:
+            continue
+        pid, port_at_parent = a.parent
+        if pid not in agents:
+            print(f"  !! Agent {a.ID} has parentID {pid} not in agents")
+            continue
+        p = agents[pid]
+        if a.parentPort is None:
+            print(f"  !! Agent {a.ID} parentPort=None but has parent tuple {a.parent}")
+            continue
+
+        nxt = _port_neighbor(G, a.node, a.parentPort)
+        if nxt != p.node:
+            print(f"  !! PORT MISMATCH: child {a.ID}@{a.node} parentPort={a.parentPort} leads to node {nxt}, "
+                  f"but parent {pid} is at node {p.node}. child.parent={a.parent}")
+
+        back = _port_neighbor(G, p.node, port_at_parent) if port_at_parent is not None else None
+        if port_at_parent is None:
+            print(f"  !! Agent {a.ID} has parent tuple {a.parent} but portAtParent=None")
+        elif back != a.node:
+            print(f"  !! BACK MISMATCH: parent {pid}@{p.node} portAtParent={port_at_parent} leads to node {back}, "
+                  f"but child {a.ID} is at node {a.node}")
+    parent_of = {}
+    for a in settled:
+        if a.parent and a.parent != BOTTOM:
+            parent_of[a.ID] = a.parent[0]
+    for cid, pid in parent_of.items():
+        if pid in parent_of and parent_of.get(pid) == cid:
+            print(f"  !! 2-CYCLE in parent IDs: {cid} <-> {pid}")
 
 
 def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
@@ -365,10 +401,11 @@ def retrace(G, agents, A_vacated):
     _snapshot("retrace:enter", G, agents)  # NEW
 
     while A_vacated:
+        dbg_tree_check(G, agents, tag=f"retrace loop v={agents[min(A_vacated)].node} Avacated={sorted(A_vacated)}")
         amin_id = min(A_vacated)
         amin = agents[amin_id]
         v = amin.node
-        xi_v_id = _xi_id(G, v, set(A_vacated), agents)
+        xi_v_id = _xi_id(G, v, set(), agents)
         psi_v_id = xi_v_id
         if xi_v_id is None:
             target_id = amin.nextAgentID
@@ -449,6 +486,8 @@ def rooted_async(G, agents, root_node):
             psi_v.portAtParent = amin.childPort
             amin.childPort = None
             psi_v.parentPort = amin.arrivalPort
+            print(f"[DBG_SET_PARENT] settled {psi_v.ID}@{psi_v.node} parent={psi_v.parent} parentPort={psi_v.parentPort} portAtParent={psi_v.portAtParent} amin.arrivalPort={amin.arrivalPort} amin.childPort={amin.childPort}")
+            dbg_tree_check(G, agents, tag="after settle parent assign")
             A_unsettled.remove(psi_v_id)
             _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents)  # NEW
             if not A_unsettled:
@@ -503,6 +542,7 @@ def rooted_async(G, agents, root_node):
                 psi_w = agents[psi_w_id]
                 arrival_port_at_w = amin.arrivalPort
                 reconfigure_if_needed(agents, psi_v, nextPort, psi_w, arrival_port_at_w)
+                dbg_tree_check(G, agents, tag="after reconfigure_if_needed")
         else:
             amin.childDetails = (psi_v.ID, psi_v.portAtParent)
             amin.childPort = None
