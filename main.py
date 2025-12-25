@@ -1,7 +1,4 @@
 # main.py
-import random
-from collections import defaultdict
-import networkx as nx
 import graph_utils
 import agent_help_scouts
 
@@ -10,7 +7,7 @@ import agent_help_scouts
 def main():
     # ─── demo topology ───
     nodes  = 10
-    agent_count = 6
+    agent_count = 10
 
     G = graph_utils.create_port_labeled_graph(nodes, 2, 42)
     agents = [agent_help_scouts.Agent(i, 0) for i in range(agent_count)]

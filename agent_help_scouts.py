@@ -1,4 +1,3 @@
-import networkx as nx # type: ignore
 from typing import List
 import inspect
 
@@ -51,6 +50,7 @@ def _snapshot(label, G, agents):
     simmer.all_node_states.append((label, {}))
     simmer.all_leaders.append((label, []))
     simmer.all_levels.append((label, []))
+    print(positions, ",", statuses)
 
     
 
@@ -174,7 +174,7 @@ def _candidate_rank(scout_result):
 def _xi_id(G, w, exclude_ids=None, agents=None):
     # returns the ID of an agent at w else none
     exclude_ids = exclude_ids or set()
-    agents_here = [aid for aid in G.nodes[w]["agents"] if ((aid not in exclude_ids) and (agents[aid].state!="unsettled"))]
+    agents_here = [aid for aid in G.nodes[w]["agents"] if ((aid not in exclude_ids) and (agents[aid].state=="settled"))]
     return agents_here[0] if agents_here else None
 
 
@@ -184,6 +184,7 @@ def _clear_node_fields(G):
 
 
 def _move_agent(G, agents, agent_id, from_node, out_port, snap=True):
+    print(f"moving agent {agent_id} from {from_node} thru {out_port} into {_port_neighbor(G, from_node, out_port)}")
     if agents[agent_id].node != from_node:
         raise RuntimeError(f"Agent {agent_id} not at {from_node}, at {agents[agent_id].node}")
     to_node = _port_neighbor(G, from_node, out_port)
@@ -218,6 +219,9 @@ def _move_group(G, agents, agent_ids, from_node, out_port):
 
 
 def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
+    frame = inspect.currentframe().f_back
+    info = inspect.getframeinfo(frame)
+    print(f"Called can vacate from line {info.lineno} in function {info.function}")
     _snapshot(f"can_vacate:enter(x={x})", G, agents)  # NEW
 
     if psi_x.parentPort is None:
@@ -269,8 +273,7 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
 def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
     frame = inspect.currentframe().f_back
     info = inspect.getframeinfo(frame)
-    print(f"Called from line {info.lineno} in function {info.function}")
-    print("man")
+    print(f"Called parallel probe from line {info.lineno} in function {info.function}")
     _snapshot(f"parallel_probe:enter(x={x})", G, agents)  # NEW
 
     psi_x.probeResultsByPort = {}
@@ -278,19 +281,18 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
     psi_x.checked = 0
     delta_x = G.degree[x]
     while psi_x.checked < delta_x:
-        print("da")
         A_scout = sorted(A_scout)
         s = len(A_scout)
         Delta_prime = min(s, delta_x - psi_x.checked)
         j = 0
         while j<Delta_prime:
-            print(len(A_scout), j, Delta_prime)
-            a = agents[A_scout[j]]
-            if psi_x.parentPort == j + psi_x.checked:
+            port = j + psi_x.checked
+            if psi_x.parentPort is not None and port == psi_x.parentPort:
                 j += 1
                 Delta_prime = min(s + 1, delta_x - psi_x.checked)
                 continue
-            a.scoutPort = j + psi_x.checked
+            a = agents[A_scout[j]]
+            a.scoutPort = port
             y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort)
             a.scoutEdgeType = edge_type(G, x, y)
             xi_y_id = _xi_id(G, y, set(A_scout), agents)
@@ -308,7 +310,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                     xi_z_id = _xi_id(G, z, set(A_scout), agents)
                     if xi_z_id is not None:
                         _move_agent(G, agents, a.ID, y, a.returnPort)
-                        b_id = next((bid for bid in A_scout if agents[bid].scoutP1Neighbor == xi_z_id and agents[bid].scoutPortAtP1Neighbor == G[z][y][f"port_{z}"]), None)
+                        b_id = next((bid for bid in A_scout if agents[bid].P1Neighbor == xi_z_id and agents[bid].portAtP1Neighbor == G[z][y][f"port_{z}"]), None)
                         if b_id is not None:
                             psi_y_id = b_id ##########
                         else:
@@ -327,9 +329,9 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                                 psi_y_id = None  ##########
                             else:
                                 _move_agent(G, agents, a.ID, y, a.returnPort)
-                                c_id = next((cid for cid in A_scout if agents[cid].scoutP1Neighbor == xi_w_id and agents[cid].scoutPortAtP1Neighbor == G[w][z][f"port_{w}"]), None)
+                                c_id = next((cid for cid in A_scout if agents[cid].P1Neighbor == xi_w_id and agents[cid].portAtP1Neighbor == G[w][z][f"port_{w}"]), None)
                                 if c_id is not None:
-                                    b_id = next((bid for bid in A_scout if agents[bid].scoutP1Neighbor == c_id and agents[bid].scoutPortAtP1Neighbor == G[z][y][f"port_{z}"]), None)
+                                    b_id = next((bid for bid in A_scout if agents[bid].P1Neighbor == c_id and agents[bid].portAtP1Neighbor == G[z][y][f"port_{z}"]), None)
                                     if b_id is not None:
                                         psi_y_id = b_id  ##########
                                     else:
@@ -344,20 +346,22 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
         psi_x.checked = psi_x.checked+Delta_prime
         results = list(psi_x.probeResultsByPort.values())
         if not results:
-            print("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
             results = [agents[a].scoutResult for a in A_scout if agents[a].scoutResult is not None]
-        results = [agents[a].scoutResult for a in A_scout if agents[a].scoutResult]
         best = min(results, key=_candidate_rank, default=None)
         if best is None or _candidate_rank(best)[0] == 99:
+            print(best)
             psi_x.probeResult = None
         else:
             psi_x.probeResult = best
-        print(psi_x.probeResult, best)
 
-    return psi_x.probeResult[0]
+    return (psi_x.probeResult[0] if psi_x.probeResult else None)
 
 
 def retrace(G, agents, A_vacated):
+    frame = inspect.currentframe().f_back
+    info = inspect.getframeinfo(frame)
+    print(f"Called retrace from line {info.lineno} in function {info.function}")
+    print(A_vacated)
     _snapshot("retrace:enter", G, agents)  # NEW
 
     while A_vacated:
@@ -368,6 +372,12 @@ def retrace(G, agents, A_vacated):
         psi_v_id = xi_v_id
         if xi_v_id is None:
             target_id = amin.nextAgentID
+            if (target_id is None) or (target_id not in A_vacated) or (agents[target_id].node != v):
+                at_v = [aid for aid in A_vacated if agents[aid].node == v]
+                if not at_v:
+                    raise RuntimeError(f"retrace: no vacated agents at current node v={v}")
+                target_id = min(at_v)
+                amin.nextAgentID = target_id
             a = agents[target_id]
             a.state = "settled"
             A_vacated.discard(target_id)
@@ -401,6 +411,13 @@ def retrace(G, agents, A_vacated):
                 if found is not None:
                     amin.nextAgentID = found
                     amin.nextPort = psi_v.recentChild
+                else:
+                    if psi_v.parent is None or psi_v.parentPort is None:
+                        raise RuntimeError(f"Retrace hit root/backtrack with Avacated still nonempty at v={v}.")
+                    parentID, _portAtParent = psi_v.parent
+                    amin.nextAgentID = parentID
+                    amin.nextPort = psi_v.parentPort
+                    amin.siblingDetails = psi_v.sibling
         else:
             parentID, _portAtParent = psi_v.parent
             amin.nextAgentID = parentID
