@@ -1,5 +1,6 @@
 import networkx as nx # type: ignore
 from typing import List
+import inspect
 
 BOTTOM = None
 PORT_ONE = 0
@@ -92,6 +93,7 @@ class Agent:
         self.nextPort = BOTTOM
 
         self.returnPort = BOTTOM
+        self.probeResultsByPort = {}
 
     @property
     def aid(self) -> int:
@@ -103,8 +105,16 @@ def _port(G, u, v):
     return G[u][v][f"port_{u}"]
 
 def _port_neighbor(G, u, port=PORT_ONE):
-    # Return neighbor of node u via port number `port`
-    return G.nodes[u]["port_map"][port]
+    pm = G.nodes[u].get("port_map", None)
+    if pm is None:
+        raise KeyError(f"Node {u} has no 'port_map' field at all")
+
+    if port not in pm:
+        raise KeyError(
+            f"Node {u}: missing port {port}. "
+            f"Available ports={sorted(pm.keys())}, degree={G.degree[u]}"
+        )
+    return pm[port]
 
 def edge_type(G, u, v):
     puv = _port(G, u, v)
@@ -120,7 +130,7 @@ def edge_type(G, u, v):
     return "tpq"
 
 def _edge_rank(edge_type: str) -> int:
-    # Algorithm 2 line 1: tp1 ≻ t11 ∼ t1q ≻ tpq  :contentReference[oaicite:1]{index=1}
+    # Algorithm 2 line 1: tp1 ≻ t11 ∼ t1q ≻ tpq
     if edge_type == "tp1":
         return 0
     if edge_type in ("t11", "t1q"):
@@ -128,6 +138,25 @@ def _edge_rank(edge_type: str) -> int:
     if edge_type == "tpq":
         return 2
     return 99  # unknown
+
+def update_node_type_after_probe(G, x, psi_x, scout_results):
+    empty = [r for r in scout_results if r[2] == "unvisited"]
+    if not empty:
+        psi_x.nodeType = "fullyVisited"
+        return
+    if psi_x.parentPort is not None:
+        parent_node = _port_neighbor(G, x, psi_x.parentPort)
+        parent_edge_type = edge_type(G, x, parent_node)
+        if parent_edge_type == "tpq" and all(r[1] == "tpq" for r in empty):
+            psi_x.nodeType = "partiallyVisited"
+            return
+    psi_x.nodeType = "visited"
+
+def reconfigure_if_needed(agents, psi_x, port_to_w, psi_w, arrival_port_at_w):
+    if psi_w.nodeType == "partiallyVisited" and arrival_port_at_w == PORT_ONE:
+        psi_w.parent = (psi_x.ID, port_to_w)
+        psi_w.parentPort = PORT_ONE
+        psi_w.nodeType = "visited"
 
 def _candidate_rank(scout_result):
     pxy, etype, ntype, _ = scout_result
@@ -145,7 +174,7 @@ def _candidate_rank(scout_result):
 def _xi_id(G, w, exclude_ids=None, agents=None):
     # returns the ID of an agent at w else none
     exclude_ids = exclude_ids or set()
-    agents_here = [aid for aid in G.nodes[w]["agents"] if ((aid not in exclude_ids) and (agents[aid].state=="settled"))]
+    agents_here = [aid for aid in G.nodes[w]["agents"] if ((aid not in exclude_ids) and (agents[aid].state!="unsettled"))]
     return agents_here[0] if agents_here else None
 
 
@@ -155,6 +184,8 @@ def _clear_node_fields(G):
 
 
 def _move_agent(G, agents, agent_id, from_node, out_port, snap=True):
+    if agents[agent_id].node != from_node:
+        raise RuntimeError(f"Agent {agent_id} not at {from_node}, at {agents[agent_id].node}")
     to_node = _port_neighbor(G, from_node, out_port)
     if to_node is None:
         raise ValueError(f"Invalid port {out_port} at node {from_node}")
@@ -197,13 +228,16 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
         w = _port_neighbor(G, x)
         _move_agent(G, agents, psi_x.ID, x, PORT_ONE)
         xi_w_id = _xi_id(G, w, {psi_x.ID}, agents)
+        p_wx = _port(G, w, x)
+        psi_x.P1Neighbor = xi_w_id
+        psi_x.portAtP1Neighbor = p_wx
         if xi_w_id is not None:
             psi_w_id = xi_w_id ##########
             agents[psi_w_id].vacatedNeighbor = True
-            p_wx = _port(G, w, x)
             _move_agent(G, agents, psi_x.ID, w, p_wx)
             _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)  # NEW
             return "settledScout"
+        _move_agent(G, agents, psi_x.ID, w, p_wx)
         _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)  # NEW
         return "settled"
 
@@ -217,7 +251,7 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
 
     if psi_x.portAtParent == PORT_ONE:
         z, _ = _move_agent(G, agents, psi_x.ID, x, psi_x.parentPort)
-        psi_z_id = _xi_id(G, agents, z)
+        psi_z_id = _xi_id(G, z, {psi_x.ID}, agents)
         psi_z = agents[psi_z_id]
         if psi_z.vacatedNeighbor==False:
             psi_z.state = "settledScout"
@@ -233,22 +267,30 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
 
 
 def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
+    frame = inspect.currentframe().f_back
+    info = inspect.getframeinfo(frame)
+    print(f"Called from line {info.lineno} in function {info.function}")
+    print("man")
     _snapshot(f"parallel_probe:enter(x={x})", G, agents)  # NEW
 
+    psi_x.probeResultsByPort = {}
     psi_x.probeResult = None
     psi_x.checked = 0
     delta_x = G.degree[x]
     while psi_x.checked < delta_x:
+        print("da")
         A_scout = sorted(A_scout)
         s = len(A_scout)
         Delta_prime = min(s, delta_x - psi_x.checked)
         j = 0
         while j<Delta_prime:
+            print(len(A_scout), j, Delta_prime)
             a = agents[A_scout[j]]
-            a.scoutPort = j + psi_x.checked
             if psi_x.parentPort == j + psi_x.checked:
                 j += 1
                 Delta_prime = min(s + 1, delta_x - psi_x.checked)
+                continue
+            a.scoutPort = j + psi_x.checked
             y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort)
             a.scoutEdgeType = edge_type(G, x, y)
             xi_y_id = _xi_id(G, y, set(A_scout), agents)
@@ -281,6 +323,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                             a.scoutP1P1Neighbor = _xi_id(G, w, set(A_scout), agents)
                             a.scoutPortAtP1P1Neighbor = G[w][z][f"port_{w}"]
                             if _xi_id(G, w, set(A_scout), agents) is None:
+                                _move_agent(G, agents, a.ID, y, a.returnPort)
                                 psi_y_id = None  ##########
                             else:
                                 _move_agent(G, agents, a.ID, y, a.returnPort)
@@ -294,16 +337,22 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                                 else:
                                     psi_y_id = None  ##########
             
-            a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id else None), psi_y_id)
+            a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id else "unvisited"), psi_y_id)
+            psi_x.probeResultsByPort[G[x][y][f"port_{x}"]] = a.scoutResult
             j+=1
 
         psi_x.checked = psi_x.checked+Delta_prime
-        results = [agents[a].scoutResult for a in A_scout]
+        results = list(psi_x.probeResultsByPort.values())
+        if not results:
+            print("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
+            results = [agents[a].scoutResult for a in A_scout if agents[a].scoutResult is not None]
+        results = [agents[a].scoutResult for a in A_scout if agents[a].scoutResult]
         best = min(results, key=_candidate_rank, default=None)
         if best is None or _candidate_rank(best)[0] == 99:
             psi_x.probeResult = None
         else:
             psi_x.probeResult = best
+        print(psi_x.probeResult, best)
 
     return psi_x.probeResult[0]
 
@@ -380,6 +429,7 @@ def rooted_async(G, agents, root_node):
             psi_v = agents[psi_v_id]
             psi_v.state = "settled"
             psi_v.parent = (amin.prevID, amin.childPort)
+            psi_v.portAtParent = amin.childPort
             amin.childPort = None
             psi_v.parentPort = amin.arrivalPort
             A_unsettled.remove(psi_v_id)
@@ -405,8 +455,16 @@ def rooted_async(G, agents, root_node):
         psi_v = agents[psi_v_id]
         psi_v.sibling = amin.siblingDetails
         amin.siblingDetails = None
-        nextPort = parallel_probe(G, agents, v, psi_v, set(A_unsettled) | set(A_vacated))
+        nextPort = parallel_probe(G, agents, v, psi_v, A_scout)
+        scout_results = list(getattr(psi_v, "probeResultsByPort", {}).values())
+        update_node_type_after_probe(G, v, psi_v, scout_results)
         psi_v.state = can_vacate(G, agents, v, psi_v, A_vacated)
+        if psi_v.state in ("settled", "settledScout"):
+            A_unsettled.discard(psi_v.ID)
+        if psi_v.state == "settledScout":
+            A_vacated.add(psi_v.ID)
+        else:
+            A_vacated.discard(psi_v.ID)
         if psi_v.state == "settledScout":
             A_vacated.add(psi_v.ID)
             A_scout = set(A_unsettled) | set(A_vacated)
@@ -422,6 +480,12 @@ def rooted_async(G, agents, root_node):
                 psi_v.recentChild = nextPort
             _snapshot(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents)  # NEW
             _move_group(G, agents, A_scout, v, nextPort)
+            w = _port_neighbor(G, v, nextPort)
+            psi_w_id = _xi_id(G, w, exclude_ids=set(), agents=agents)
+            if psi_w_id is not None:
+                psi_w = agents[psi_w_id]
+                arrival_port_at_w = amin.arrivalPort
+                reconfigure_if_needed(agents, psi_v, nextPort, psi_w, arrival_port_at_w)
         else:
             amin.childDetails = (psi_v.ID, psi_v.portAtParent)
             amin.childPort = None
