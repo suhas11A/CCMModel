@@ -336,11 +336,11 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
             a.scoutEdgeType = edge_type(G, x, y)
             xi_y_id = _xi_id(G, y, set(A_scout), agents)
             if xi_y_id is not None:
-                psi_y_id = xi_y_id ##########
+                psi_y_id = xi_y_id
                 _move_agent(G, agents, a.ID, y, a.returnPort)
             else:
                 if a.returnPort == PORT_ONE:
-                    psi_y_id = None ##########
+                    psi_y_id = None
                     _move_agent(G, agents, a.ID, y, a.returnPort)
                 else:
                     z = _port_neighbor(G, y)
@@ -351,12 +351,12 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                         _move_agent(G, agents, a.ID, y, a.returnPort)
                         b_id = next((bid for bid in A_scout if agents[bid].P1Neighbor == xi_z_id and agents[bid].portAtP1Neighbor == G[z][y][f"port_{z}"]), None)
                         if b_id is not None:
-                            psi_y_id = b_id ##########
+                            psi_y_id = b_id
                         else:
-                            psi_y_id = None  ##########
+                            psi_y_id = None
                     else:
                         if (G[z][y][f"port_{z}"]==PORT_ONE):
-                            psi_y_id = None  ##########
+                            psi_y_id = None
                             _move_agent(G, agents, a.ID, y, a.returnPort)
                         else:
                             w = _port_neighbor(G, z)
@@ -365,18 +365,18 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                             a.scoutPortAtP1P1Neighbor = G[w][z][f"port_{w}"]
                             if _xi_id(G, w, set(A_scout), agents) is None:
                                 _move_agent(G, agents, a.ID, y, a.returnPort)
-                                psi_y_id = None  ##########
+                                psi_y_id = None
                             else:
                                 _move_agent(G, agents, a.ID, y, a.returnPort)
                                 c_id = next((cid for cid in A_scout if agents[cid].P1Neighbor == xi_w_id and agents[cid].portAtP1Neighbor == G[w][z][f"port_{w}"]), None)
                                 if c_id is not None:
                                     b_id = next((bid for bid in A_scout if agents[bid].P1Neighbor == c_id and agents[bid].portAtP1Neighbor == G[z][y][f"port_{z}"]), None)
                                     if b_id is not None:
-                                        psi_y_id = b_id  ##########
+                                        psi_y_id = b_id
                                     else:
-                                        psi_y_id = None  ##########
+                                        psi_y_id = None
                                 else:
-                                    psi_y_id = None  ##########
+                                    psi_y_id = None
             
             a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id is not None else "unvisited"), psi_y_id)
             psi_x.probeResultsByPort[G[x][y][f"port_{x}"]] = a.scoutResult
@@ -435,7 +435,7 @@ def retrace(G, agents, A_vacated):
             if psi_v.recentChild == amin.arrivalPort:
                 if amin.siblingDetails is None:
                     psi_v.recentChild = None
-                    amin.nextAgentID, amin.nextPort = psi_v.parent[0]
+                    amin.nextAgentID, amin.nextPort = psi_v.parent
                     amin.siblingDetails = psi_v.sibling
                 else:
                     amin.nextAgentID, amin.nextPort = amin.siblingDetails
