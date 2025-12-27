@@ -156,7 +156,8 @@ def reconfigure_if_needed(agents, psi_x, port_to_w, psi_w, arrival_port_at_w):
     if psi_w.nodeType == "partiallyVisited" and arrival_port_at_w == PORT_ONE:
         psi_w.parent = (psi_x.ID, port_to_w)
         print(f"[DBG_RECONF] psi_w={psi_w.ID}@{psi_w.node} NEW parent={psi_w.parent} parentPort={psi_w.parentPort}")
-        psi_w.parentPort = PORT_ONE
+        psi_w.portAtParent = port_to_w  ################
+        psi_w.parentPort = arrival_port_at_w  ################
         psi_w.nodeType = "visited"
 
 def _candidate_rank(scout_result):
@@ -272,21 +273,21 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
         psi_x.P1Neighbor = xi_w_id
         psi_x.portAtP1Neighbor = p_wx
         if xi_w_id is not None:
-            psi_w_id = xi_w_id ##########
+            psi_w_id = xi_w_id
             agents[psi_w_id].vacatedNeighbor = True
             _move_agent(G, agents, psi_x.ID, w, p_wx)
-            _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)  # NEW
+            _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)
             return "settledScout"
         _move_agent(G, agents, psi_x.ID, w, p_wx)
-        _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)  # NEW
+        _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)
         return "settled"
 
     if ((psi_x.nodeType == "fullyVisited") and (psi_x.vacatedNeighbor is False)):
-        _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)  # NEW
+        _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)
         return "settledScout"
 
     if psi_x.nodeType == "partiallyVisited":
-        _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)  # NEW
+        _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)
         return "settledScout"
 
     if psi_x.portAtParent == PORT_ONE:
@@ -298,11 +299,11 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
             A_vacated.add(psi_z.ID)
             _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent)
             psi_x.vacatedNeighbor = True
-            _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)  # NEW
+            _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)
             return "settled"
         else:
             _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent)
-            _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)  # NEW
+            _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)
             return "settled"
 
 
@@ -375,7 +376,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                                 else:
                                     psi_y_id = None  ##########
             
-            a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id else "unvisited"), psi_y_id)
+            a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id is not None else "unvisited"), psi_y_id)
             psi_x.probeResultsByPort[G[x][y][f"port_{x}"]] = a.scoutResult
             j+=1
 
@@ -404,6 +405,8 @@ def retrace(G, agents, A_vacated):
         dbg_tree_check(G, agents, tag=f"retrace loop v={agents[min(A_vacated)].node} Avacated={sorted(A_vacated)}")
         amin_id = min(A_vacated)
         amin = agents[amin_id]
+        amin.nextPort = None  ################
+        amin.nextAgentID = None  ################
         v = amin.node
         xi_v_id = _xi_id(G, v, set(), agents)
         psi_v_id = xi_v_id
@@ -432,7 +435,8 @@ def retrace(G, agents, A_vacated):
             if psi_v.recentChild == amin.arrivalPort:
                 if amin.siblingDetails is None:
                     psi_v.recentChild = None
-                    amin.nextAgentID, amin.nextPort = psi_v.parent
+                    amin.nextAgentID = psi_v.parent[0]
+                    amin.nextPort = psi_v.parentPort  ################
                     amin.siblingDetails = psi_v.sibling
                 else:
                     amin.nextAgentID, amin.nextPort = amin.siblingDetails
@@ -479,16 +483,35 @@ def rooted_async(G, agents, root_node):
         amin = agents[min(A_scout)]
         psi_v_id = _xi_id(G, v, {}, agents)
         if psi_v_id is None:
-            psi_v_id = max(A_unsettled) if A_unsettled else None
+            candidates = [aid for aid in A_unsettled if agents[aid].node == v]
+            if not candidates:
+                raise RuntimeError(f"No unsettled agent at v={v} to settle (this breaks invariants).")
+            psi_v_id = max(candidates)
             psi_v = agents[psi_v_id]
             psi_v.state = "settled"
-            psi_v.parent = (amin.prevID, amin.childPort)
-            psi_v.portAtParent = amin.childPort
+            if amin.prevID is None:
+                psi_v.parent = None
+                psi_v.parentPort = None
+                psi_v.portAtParent = None
+            else:
+                if amin.arrivalPort is None:
+                    raise RuntimeError(f"Settling {psi_v.ID}@{v} but amin.arrivalPort=None (non-root).")
+                if amin.childPort is None and amin.prevID is not None:
+                    prev = agents[amin.prevID]
+                    amin.childPort = prev.recentPort
+                if amin.childPort is None:
+                    raise RuntimeError(
+                        f"Settling {psi_v.ID}@{v} but amin.childPort=None "
+                        f"(prevID={amin.prevID}, arrivalPort={amin.arrivalPort})."
+                    )
+                psi_v.parentPort = amin.arrivalPort
+                psi_v.parent = (amin.prevID, amin.childPort)
+                psi_v.portAtParent = amin.childPort  ################
             amin.childPort = None
-            psi_v.parentPort = amin.arrivalPort
             print(f"[DBG_SET_PARENT] settled {psi_v.ID}@{psi_v.node} parent={psi_v.parent} parentPort={psi_v.parentPort} portAtParent={psi_v.portAtParent} amin.arrivalPort={amin.arrivalPort} amin.childPort={amin.childPort}")
             dbg_tree_check(G, agents, tag="after settle parent assign")
             A_unsettled.remove(psi_v_id)
+            amin.prevID = psi_v.ID  ################
             _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents)  # NEW
             if not A_unsettled:
                 break
@@ -497,6 +520,7 @@ def rooted_async(G, agents, root_node):
         k = len(A)
         delta_v = G.degree[v]
         if delta_v >= k - 1:
+            print("Taking shortcut hehe")
             parallel_probe(G, agents, v, agents[psi_v_id], A_scout)
             probe_items = sorted(agents[psi_v_id].probeResultsByPort.items(), key=lambda kv: kv[0])
             empty_ports = [sr[0] for _, sr in probe_items[: (k - 1)] if sr and sr[3] is None]
@@ -535,7 +559,9 @@ def rooted_async(G, agents, root_node):
                 amin.childDetails = None
                 psi_v.recentChild = nextPort
             _snapshot(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents)  # NEW
+            A_scout = set(A_unsettled) | set(A_vacated)  ################
             _move_group(G, agents, A_scout, v, nextPort)
+            amin.childPort = nextPort  ################
             w = _port_neighbor(G, v, nextPort)
             psi_w_id = _xi_id(G, w, exclude_ids=set(), agents=agents)
             if psi_w_id is not None:
@@ -548,6 +574,7 @@ def rooted_async(G, agents, root_node):
             amin.childPort = None
             psi_v.recentPort = psi_v.parentPort
             _snapshot(f"rooted_async:backtrack(v={v},p={psi_v.parentPort})", G, agents)  # NEW
+            A_scout = set(A_unsettled) | set(A_vacated)  ################
             _move_group(G, agents, A_scout, v, psi_v.parentPort)
 
     retrace(G, agents, A_vacated)
