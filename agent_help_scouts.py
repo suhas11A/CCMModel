@@ -256,6 +256,8 @@ def dbg_tree_check(G, agents, tag=""):
 
 
 def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
+    if psi_x.parentPort is None:
+        return "settled"
     frame = inspect.currentframe().f_back
     info = inspect.getframeinfo(frame)
     print(f"Called can vacate from line {info.lineno} in function {info.function}")
@@ -405,8 +407,6 @@ def retrace(G, agents, A_vacated):
         dbg_tree_check(G, agents, tag=f"retrace loop v={agents[min(A_vacated)].node} Avacated={sorted(A_vacated)}")
         amin_id = min(A_vacated)
         amin = agents[amin_id]
-        amin.nextPort = None  ################
-        amin.nextAgentID = None  ################
         v = amin.node
         xi_v_id = _xi_id(G, v, set(), agents)
         psi_v_id = xi_v_id
@@ -435,8 +435,7 @@ def retrace(G, agents, A_vacated):
             if psi_v.recentChild == amin.arrivalPort:
                 if amin.siblingDetails is None:
                     psi_v.recentChild = None
-                    amin.nextAgentID = psi_v.parent[0]
-                    amin.nextPort = psi_v.parentPort  ################
+                    amin.nextAgentID, amin.nextPort = psi_v.parent[0]
                     amin.siblingDetails = psi_v.sibling
                 else:
                     amin.nextAgentID, amin.nextPort = amin.siblingDetails
@@ -570,6 +569,12 @@ def rooted_async(G, agents, root_node):
                 reconfigure_if_needed(agents, psi_v, nextPort, psi_w, arrival_port_at_w)
                 dbg_tree_check(G, agents, tag="after reconfigure_if_needed")
         else:
+            if psi_v.parentPort is None:
+                if A_unsettled:
+                    raise RuntimeError(
+                        f"Stuck at root v={v} with nextPort=None but A_unsettled still nonempty: {sorted(A_unsettled)}"
+                    )
+                break
             amin.childDetails = (psi_v.ID, psi_v.portAtParent)
             amin.childPort = None
             psi_v.recentPort = psi_v.parentPort
