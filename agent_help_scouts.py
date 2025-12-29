@@ -329,7 +329,6 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
             if psi_x.parentPort is not None and port == psi_x.parentPort:
                 j += 1
                 Delta_prime = min(s + 1, delta_x - psi_x.checked)
-                continue
             a = agents[A_scout[j]]
             a.scoutPort = port
             y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort)

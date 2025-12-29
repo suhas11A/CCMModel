@@ -1,0 +1,505 @@
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled']]
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled']]
+[DBG_SET_PARENT] settled 8@0 parent=None parentPort=None portAtParent=None amin.arrivalPort=None amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=1)
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 0 from 0 thru 0 into 1
+[['1'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 0 from 1 thru 0 into 0
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 1 from 0 thru 1 into 4
+[['0'], ['4'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 1 from 4 thru 0 into 0
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 2 from 0 thru 2 into 6
+[['0'], ['0'], ['6'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 2 from 6 thru 1 into 0
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 3 from 0 thru 3 into 8
+[['0'], ['0'], ['0'], ['8'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 3 from 8 thru 3 into 0
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+[['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+moving agent 0 from 0 thru 1 into 4
+moving agent 1 from 0 thru 1 into 4
+moving agent 2 from 0 thru 1 into 4
+moving agent 3 from 0 thru 1 into 4
+moving agent 4 from 0 thru 1 into 4
+moving agent 5 from 0 thru 1 into 4
+moving agent 6 from 0 thru 1 into 4
+moving agent 7 from 0 thru 1 into 4
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled']]
+[DBG_SET_PARENT] settled 7@4 parent=(8, 1) parentPort=0 portAtParent=1 amin.arrivalPort=0 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=2)
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 1 from 4 thru 0 into 0
+[['4'], ['0'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 1 from 0 thru 1 into 4
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 2 from 4 thru 2 into 5
+[['4'], ['4'], ['5'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 2 from 5 thru 1 into 4
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 3 from 4 thru 3 into 7
+[['4'], ['4'], ['4'], ['7'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 3 from 7 thru 3 into 4
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 7 from 4 thru 0 into 0
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+moving agent 7 from 0 thru 1 into 4
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled']]
+[['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['4'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settledScout'], ['settled']]
+moving agent 0 from 4 thru 2 into 5
+moving agent 1 from 4 thru 2 into 5
+moving agent 2 from 4 thru 2 into 5
+moving agent 3 from 4 thru 2 into 5
+moving agent 4 from 4 thru 2 into 5
+moving agent 5 from 4 thru 2 into 5
+moving agent 6 from 4 thru 2 into 5
+moving agent 7 from 4 thru 2 into 5
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settledScout'], ['settled']]
+[DBG_SET_PARENT] settled 6@5 parent=(7, 2) parentPort=1 portAtParent=2 amin.arrivalPort=1 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=2)
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 5. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@5 portAtParent=2 leads to node 2, but child 6 is at node 5
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 5 thru 0 into 7
+[['7'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 7 thru 1 into 5
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 5 thru 1 into 4
+[['5'], ['5'], ['4'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 4 thru 2 into 5
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 5 thru 3 into 3
+[['5'], ['5'], ['5'], ['3'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 3 thru 3 into 5
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 6 from 5 thru 0 into 7
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['7'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 6 from 7 thru 1 into 5
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+[['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['5'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 5 thru 0 into 7
+moving agent 1 from 5 thru 0 into 7
+moving agent 2 from 5 thru 0 into 7
+moving agent 3 from 5 thru 0 into 7
+moving agent 4 from 5 thru 0 into 7
+moving agent 5 from 5 thru 0 into 7
+moving agent 7 from 5 thru 0 into 7
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled']]
+[DBG_SET_PARENT] settled 5@7 parent=(6, 0) parentPort=1 portAtParent=0 amin.arrivalPort=1 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=3)
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 7. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@7 portAtParent=2 leads to node 1, but child 6 is at node 5
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 7 thru 0 into 2
+[['2'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 2 thru 0 into 7
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 7 thru 1 into 5
+[['7'], ['7'], ['5'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 5 thru 0 into 7
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 7 thru 3 into 4
+[['7'], ['7'], ['7'], ['4'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 4 thru 3 into 7
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 5 from 7 thru 0 into 2
+[['7'], ['7'], ['7'], ['7'], ['7'], ['2'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 5 from 2 thru 0 into 7
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['7'], ['7'], ['7'], ['7'], ['7'], ['7'], ['5'], ['7'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 7 thru 0 into 2
+moving agent 1 from 7 thru 0 into 2
+moving agent 2 from 7 thru 0 into 2
+moving agent 3 from 7 thru 0 into 2
+moving agent 4 from 7 thru 0 into 2
+moving agent 7 from 7 thru 0 into 2
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[DBG_SET_PARENT] settled 4@2 parent=(5, 0) parentPort=0 portAtParent=0 amin.arrivalPort=0 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=4)
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 2. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@2 portAtParent=2 leads to node 6, but child 6 is at node 5
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 1 from 2 thru 0 into 7
+[['2'], ['7'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 1 from 7 thru 0 into 2
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 2 thru 2 into 6
+[['2'], ['2'], ['6'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 6 thru 2 into 2
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 2 thru 3 into 5
+[['2'], ['2'], ['2'], ['5'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 5 thru 2 into 2
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 2 thru 0 into 7
+[['2'], ['2'], ['2'], ['2'], ['7'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 7 thru 0 into 2
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['2'], ['2'], ['2'], ['2'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 2 thru 2 into 6
+moving agent 1 from 2 thru 2 into 6
+moving agent 2 from 2 thru 2 into 6
+moving agent 3 from 2 thru 2 into 6
+moving agent 4 from 2 thru 2 into 6
+moving agent 7 from 2 thru 2 into 6
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[DBG_SET_PARENT] settled 3@6 parent=(4, 2) parentPort=2 portAtParent=2 amin.arrivalPort=2 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=4)
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 6. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@6 portAtParent=2 leads to node 2, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 6. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@6 portAtParent=2 leads to node 2, but child 6 is at node 5
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 6 thru 0 into 8
+[['8'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 8 thru 1 into 6
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 1 from 6 thru 1 into 0
+[['6'], ['0'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 1 from 0 thru 2 into 6
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 6 thru 2 into 2
+[['6'], ['6'], ['6'], ['2'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 2 thru 2 into 6
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 6 thru 0 into 8
+[['6'], ['6'], ['6'], ['8'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 3 from 8 thru 1 into 6
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['6'], ['6'], ['6'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 6 thru 0 into 8
+moving agent 1 from 6 thru 0 into 8
+moving agent 2 from 6 thru 0 into 8
+moving agent 4 from 6 thru 0 into 8
+moving agent 7 from 6 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['unsettled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[DBG_SET_PARENT] settled 2@8 parent=(3, 0) parentPort=1 portAtParent=0 amin.arrivalPort=1 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=5)
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 8. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@8 portAtParent=2 leads to node 1, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 8. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@8 portAtParent=2 leads to node 1, but child 6 is at node 5
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 8 thru 0 into 3
+[['3'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 3 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 8 thru 1 into 6
+[['8'], ['8'], ['6'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 6 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 8 thru 3 into 0
+[['8'], ['8'], ['8'], ['6'], ['0'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 0 thru 3 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 8 thru 0 into 3
+[['8'], ['8'], ['3'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 3 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 8 thru 0 into 3
+moving agent 1 from 8 thru 0 into 3
+moving agent 4 from 8 thru 0 into 3
+moving agent 7 from 8 thru 0 into 3
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['unsettled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[DBG_SET_PARENT] settled 1@3 parent=(2, 0) parentPort=0 portAtParent=0 amin.arrivalPort=0 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=6)
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 3. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@3 portAtParent=2 leads to node 2, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 3. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@3 portAtParent=2 leads to node 2, but child 6 is at node 5
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 1 from 3 thru 0 into 8
+[['3'], ['8'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 1 from 8 thru 0 into 3
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 3 thru 2 into 2
+[['3'], ['3'], ['8'], ['6'], ['2'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 2 thru 1 into 3
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 7 from 3 thru 3 into 5
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['5'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 7 from 5 thru 3 into 3
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+(0, 't11', 'visited', 2)
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 3 thru 0 into 8
+moving agent 1 from 3 thru 0 into 8
+moving agent 4 from 3 thru 0 into 8
+moving agent 7 from 3 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called parallel probe from line 537 in function rooted_async
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 8 thru 0 into 3
+[['3'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 3 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 8 thru 1 into 6
+[['8'], ['8'], ['8'], ['6'], ['6'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 4 from 6 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 7 from 8 thru 3 into 0
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['0'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 7 from 0 thru 3 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called can vacate from line 540 in function rooted_async
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 8 thru 0 into 3
+[['8'], ['8'], ['3'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 2 from 3 thru 0 into 8
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[['8'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+moving agent 0 from 8 thru 0 into 3
+moving agent 1 from 8 thru 0 into 3
+moving agent 4 from 8 thru 0 into 3
+moving agent 7 from 8 thru 0 into 3
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['unsettled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+[DBG_SET_PARENT] settled 0@3 parent=(1, 0) parentPort=0 portAtParent=0 amin.arrivalPort=0 amin.childPort=None
+
+[DBG_TREE] after settle parent assign  (#settled=6)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 3. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@3 portAtParent=0 leads to node 8, but child 0 is at node 3
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 3. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@3 portAtParent=2 leads to node 2, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 3. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@3 portAtParent=2 leads to node 2, but child 6 is at node 5
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+Called retrace from line 585 in function rooted_async
+{1, 4, 7}
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=3 Avacated=[1, 4, 7]  (#settled=6)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 3. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@3 portAtParent=0 leads to node 8, but child 0 is at node 3
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 3. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@3 portAtParent=2 leads to node 2, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 3. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@3 portAtParent=2 leads to node 2, but child 6 is at node 5
+moving agent 1 from 3 thru 0 into 8
+moving agent 4 from 3 thru 0 into 8
+moving agent 7 from 3 thru 0 into 8
+[['3'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=8 Avacated=[1, 4, 7]  (#settled=6)
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 8. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@8 portAtParent=2 leads to node 1, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 8. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@8 portAtParent=2 leads to node 1, but child 6 is at node 5
+moving agent 1 from 8 thru 0 into 3
+moving agent 4 from 8 thru 0 into 3
+moving agent 7 from 8 thru 0 into 3
+[['3'], ['3'], ['8'], ['6'], ['3'], ['7'], ['5'], ['3'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=3 Avacated=[1, 4, 7]  (#settled=6)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 3. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@3 portAtParent=0 leads to node 8, but child 0 is at node 3
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 3. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@3 portAtParent=2 leads to node 2, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 3. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@3 portAtParent=2 leads to node 2, but child 6 is at node 5
+moving agent 1 from 3 thru 0 into 8
+moving agent 4 from 3 thru 0 into 8
+moving agent 7 from 3 thru 0 into 8
+[['3'], ['8'], ['8'], ['6'], ['8'], ['7'], ['5'], ['8'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=8 Avacated=[1, 4, 7]  (#settled=6)
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 8. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@8 portAtParent=2 leads to node 1, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 8. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@8 portAtParent=2 leads to node 1, but child 6 is at node 5
+moving agent 1 from 8 thru 1 into 6
+moving agent 4 from 8 thru 1 into 6
+moving agent 7 from 8 thru 1 into 6
+[['3'], ['6'], ['8'], ['6'], ['6'], ['7'], ['5'], ['6'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=6 Avacated=[1, 4, 7]  (#settled=6)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 6. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@6 portAtParent=0 leads to node 8, but child 0 is at node 3
+  !! PORT MISMATCH: child 3@6 parentPort=2 leads to node 2, but parent 4 is at node 6. child.parent=(4, 2)
+  !! BACK MISMATCH: parent 4@6 portAtParent=2 leads to node 2, but child 3 is at node 6
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 6. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@6 portAtParent=2 leads to node 2, but child 6 is at node 5
+moving agent 1 from 6 thru 2 into 2
+moving agent 4 from 6 thru 2 into 2
+moving agent 7 from 6 thru 2 into 2
+[['3'], ['2'], ['8'], ['6'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=2 Avacated=[1, 4, 7]  (#settled=6)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 2. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@2 portAtParent=0 leads to node 7, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 2. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@2 portAtParent=2 leads to node 6, but child 6 is at node 5
+moving agent 1 from 2 thru 0 into 7
+moving agent 7 from 2 thru 0 into 7
+[['3'], ['7'], ['8'], ['6'], ['2'], ['7'], ['5'], ['7'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=7 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 7. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@7 portAtParent=0 leads to node 2, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 7. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@7 portAtParent=2 leads to node 1, but child 6 is at node 5
+moving agent 1 from 7 thru 0 into 2
+moving agent 7 from 7 thru 0 into 2
+[['3'], ['2'], ['8'], ['6'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=2 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 2. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@2 portAtParent=0 leads to node 7, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 2. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@2 portAtParent=2 leads to node 6, but child 6 is at node 5
+moving agent 1 from 2 thru 0 into 7
+moving agent 7 from 2 thru 0 into 7
+[['3'], ['7'], ['8'], ['6'], ['2'], ['7'], ['5'], ['7'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=7 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 7. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@7 portAtParent=0 leads to node 2, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 7. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@7 portAtParent=2 leads to node 1, but child 6 is at node 5
+moving agent 1 from 7 thru 1 into 5
+moving agent 7 from 7 thru 1 into 5
+[['3'], ['5'], ['8'], ['6'], ['2'], ['7'], ['5'], ['5'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=5 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 5. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@5 portAtParent=0 leads to node 7, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 5. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@5 portAtParent=2 leads to node 2, but child 6 is at node 5
+moving agent 1 from 5 thru 2 into 2
+moving agent 7 from 5 thru 2 into 2
+[['3'], ['2'], ['8'], ['6'], ['2'], ['7'], ['5'], ['2'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=2 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 2. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@2 portAtParent=0 leads to node 7, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 2. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@2 portAtParent=2 leads to node 6, but child 6 is at node 5
+moving agent 1 from 2 thru 0 into 7
+moving agent 7 from 2 thru 0 into 7
+[['3'], ['7'], ['8'], ['6'], ['2'], ['7'], ['5'], ['7'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=7 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 7. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@7 portAtParent=0 leads to node 2, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 7. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@7 portAtParent=2 leads to node 1, but child 6 is at node 5
+moving agent 1 from 7 thru 1 into 5
+moving agent 7 from 7 thru 1 into 5
+[['3'], ['5'], ['8'], ['6'], ['2'], ['7'], ['5'], ['5'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=5 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 5. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@5 portAtParent=0 leads to node 7, but child 0 is at node 3
+  !! PORT MISMATCH: child 6@5 parentPort=1 leads to node 4, but parent 7 is at node 5. child.parent=(7, 2)
+  !! BACK MISMATCH: parent 7@5 portAtParent=2 leads to node 2, but child 6 is at node 5
+moving agent 1 from 5 thru 1 into 4
+moving agent 7 from 5 thru 1 into 4
+[['3'], ['4'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settledScout'], ['settled']]
+
+[DBG_TREE] retrace loop v=4 Avacated=[1, 7]  (#settled=7)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 4. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@4 portAtParent=0 leads to node 0, but child 0 is at node 3
+moving agent 1 from 4 thru 1 into 3
+[['3'], ['3'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=3 Avacated=[1]  (#settled=8)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 3. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@3 portAtParent=0 leads to node 8, but child 0 is at node 3
+moving agent 1 from 3 thru 0 into 8
+[['3'], ['8'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=8 Avacated=[1]  (#settled=8)
+moving agent 1 from 8 thru 1 into 6
+[['3'], ['6'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=6 Avacated=[1]  (#settled=8)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 6. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@6 portAtParent=0 leads to node 8, but child 0 is at node 3
+moving agent 1 from 6 thru 2 into 2
+[['3'], ['2'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=2 Avacated=[1]  (#settled=8)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 2. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@2 portAtParent=0 leads to node 7, but child 0 is at node 3
+moving agent 1 from 2 thru 0 into 7
+[['3'], ['7'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=7 Avacated=[1]  (#settled=8)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 7. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@7 portAtParent=0 leads to node 2, but child 0 is at node 3
+moving agent 1 from 7 thru 1 into 5
+[['3'], ['5'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=5 Avacated=[1]  (#settled=8)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 5. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@5 portAtParent=0 leads to node 7, but child 0 is at node 3
+moving agent 1 from 5 thru 1 into 4
+[['3'], ['4'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=4 Avacated=[1]  (#settled=8)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 4. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@4 portAtParent=0 leads to node 0, but child 0 is at node 3
+moving agent 1 from 4 thru 0 into 0
+[['3'], ['0'], ['8'], ['6'], ['2'], ['7'], ['5'], ['4'], ['0']] , [['settled'], ['settledScout'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled'], ['settled']]
+
+[DBG_TREE] retrace loop v=0 Avacated=[1]  (#settled=8)
+  !! PORT MISMATCH: child 0@3 parentPort=0 leads to node 8, but parent 1 is at node 0. child.parent=(1, 0)
+  !! BACK MISMATCH: parent 1@0 portAtParent=0 leads to node 1, but child 0 is at node 3
