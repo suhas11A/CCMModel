@@ -288,7 +288,7 @@ def _candidate_rank(scout_result):
 
 
 def _xi_id(G, w, exclude_ids=None, agents=None):
-    # returns the ID of an agent at w else none
+    # returns the ID of an agent settled at w else none
     exclude_ids = exclude_ids or set()
     agents_here = [aid for aid in G.nodes[w]["agents"] if ((aid not in exclude_ids) and (agents[aid].state=="settled"))]
     return agents_here[0] if agents_here else None
@@ -444,6 +444,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
             if psi_x.parentPort is not None and port == psi_x.parentPort:
                 j += 1
                 Delta_prime = min(s + 1, delta_x - psi_x.checked)
+                continue
             a = agents[A_scout[j]]
             a.scoutPort = port
             y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort, round_number)
@@ -645,7 +646,6 @@ def rooted_async(G, agents, root_node):
             print(f"[DBG_SET_PARENT] settled {psi_v.ID}@{psi_v.node} parent={psi_v.parent} parentPort={psi_v.parentPort} portAtParent={psi_v.portAtParent} amin.arrivalPort={amin.arrivalPort} amin.childPort={amin.childPort}")
             dbg_tree_check(G, agents, tag="after settle parent assign")
             A_unsettled.remove(psi_v_id)
-            amin.prevID = psi_v.ID  ################
             _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents, round_number)  # NEW
             round_number+=1
             if not A_unsettled:
@@ -668,7 +668,6 @@ def rooted_async(G, agents, root_node):
                 round_number+=1
                 break
 
-        psi_v = agents[psi_v_id]
         psi_v.sibling = amin.siblingDetails
         amin.siblingDetails = None
         nextPort, rounds_max = parallel_probe(G, agents, v, psi_v, A_scout, round_number)
@@ -677,6 +676,9 @@ def rooted_async(G, agents, root_node):
         update_node_type_after_probe(G, v, psi_v, scout_results)
         psi_v.state, rounds_max = can_vacate(G, agents, v, psi_v, A_vacated, round_number)
         round_number+=rounds_max
+        if psi_v.state=="settled":
+            A_unsettled.discard(psi_v.ID)
+            A_scout = set(A_unsettled) | set(A_vacated)
         if psi_v.state == "settledScout":
             A_vacated.add(psi_v.ID)
             A_scout = set(A_unsettled) | set(A_vacated)
