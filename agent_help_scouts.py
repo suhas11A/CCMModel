@@ -1,5 +1,6 @@
 from typing import List
 import inspect
+import copy
 
 BOTTOM = None
 PORT_ONE = 0
@@ -42,8 +43,6 @@ def _positions_and_statuses(agents):
     return positions, statuses
 
 
-import copy
-
 def _snapshot(label, G, agents, round_number, agent_id=-1):
     arr, by_id = _agents_as_list_and_map(agents)
 
@@ -73,7 +72,6 @@ def _snapshot(label, G, agents, round_number, agent_id=-1):
             container[idx] = value
             return container
         if isinstance(container, tuple):
-            # convert to list -> edit -> back to tuple
             tmp = list(container)
             idx = _agent_index_in_arr(aid)
             tmp[idx] = value
@@ -101,68 +99,39 @@ def _snapshot(label, G, agents, round_number, agent_id=-1):
     if agent_id == -1:
         if round_number < simmer.rounds:
             _update_label_at(round_number, label)
-
         elif round_number == simmer.rounds:
-            if simmer.rounds == 0:
-                base_positions   = copy.deepcopy(cur_positions)
-                base_statuses    = copy.deepcopy(cur_statuses)
-                base_node_states = {}
-                base_leaders     = []
-                base_levels      = []
-            else:
-                base_positions   = copy.deepcopy(simmer.all_positions[-1][1])
-                base_statuses    = copy.deepcopy(simmer.all_statuses[-1][1])
-                base_node_states = copy.deepcopy(simmer.all_node_states[-1][1])
-                base_leaders     = copy.deepcopy(simmer.all_leaders[-1][1])
-                base_levels      = copy.deepcopy(simmer.all_levels[-1][1])
-
+            base_positions   = copy.deepcopy(cur_positions)
+            base_statuses    = copy.deepcopy(cur_statuses)
+            base_node_states = []
+            base_leaders     = []
+            base_levels      = []
             _insert_new_round(label, base_positions, base_statuses, base_node_states, base_leaders, base_levels)
-
         else:
             raise ValueError("Unreachable state")
-
-        print(cur_positions, ",", cur_statuses)
         return
     
     if round_number < simmer.rounds:
         _update_label_at(round_number, label)
-
         stored_positions = copy.deepcopy(simmer.all_positions[round_number][1])
         stored_statuses  = copy.deepcopy(simmer.all_statuses[round_number][1])
-
         new_agent_pos = _get_agent_value(cur_positions, agent_id)
         new_agent_sta = _get_agent_value(cur_statuses, agent_id)
-
         stored_positions = _set_agent_value(stored_positions, agent_id, new_agent_pos)
         stored_statuses  = _set_agent_value(stored_statuses, agent_id, new_agent_sta)
-
         simmer.all_positions[round_number] = (label, stored_positions)
         simmer.all_statuses[round_number]  = (label, stored_statuses)
 
     elif round_number == simmer.rounds:
-        if simmer.rounds == 0:
-            base_positions   = copy.deepcopy(cur_positions)
-            base_statuses    = copy.deepcopy(cur_statuses)
-            base_node_states = {}
-            base_leaders     = []
-            base_levels      = []
-        else:
-            base_positions   = copy.deepcopy(simmer.all_positions[-1][1])
-            base_statuses    = copy.deepcopy(simmer.all_statuses[-1][1])
-            base_node_states = copy.deepcopy(simmer.all_node_states[-1][1])
-            base_leaders     = copy.deepcopy(simmer.all_leaders[-1][1])
-            base_levels      = copy.deepcopy(simmer.all_levels[-1][1])
-
+        base_positions   = copy.deepcopy(cur_positions)
+        base_statuses    = copy.deepcopy(cur_statuses)
+        base_node_states = []
+        base_leaders     = []
+        base_levels      = []
         new_agent_pos = _get_agent_value(cur_positions, agent_id)
         new_agent_sta = _get_agent_value(cur_statuses, agent_id)
-
         base_positions = _set_agent_value(base_positions, agent_id, new_agent_pos)
         base_statuses  = _set_agent_value(base_statuses, agent_id, new_agent_sta)
-
         _insert_new_round(label, base_positions, base_statuses, base_node_states, base_leaders, base_levels)
-
-    else:
-        raise ValueError(f"round_number={round_number} > simmer.rounds={simmer.rounds}")
 
     
 
