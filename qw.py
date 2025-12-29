@@ -142,36 +142,16 @@ def _candidate_rank(scout_result):
     return (node_rank, _edge_rank(etype), pxy) 
 
 
-def _xi_id(G, w, exclude_ids=None):
+def _xi_id(G, w, exclude_ids=None, agents=None):
     # returns the ID of an agent at w else none
     exclude_ids = exclude_ids or set()
-    agents_here = [aid for aid in G.nodes[w]["agents"] if aid not in exclude_ids]
+    agents_here = [aid for aid in G.nodes[w]["agents"] if ((aid not in exclude_ids) and (agents[aid].state=="settled"))]
     return agents_here[0] if agents_here else None
 
 
 def _clear_node_fields(G):
     for u in G.nodes():
         G.nodes[u]["agents"] = set()
-        G.nodes[u]["settled_agent"] = None
-
-
-def _psi_id(G, v):
-    # Returns agentID of agent settled at v
-    return G.nodes[v]["settled_agent"]
-
-
-def _psi(G, agents, u):
-    # Returns agent settled at v
-    sid = _psi_id(G, u)
-    return agents[sid] if sid is not None else None
-
-
-def _settle_at(G, agents, agent_id, v):
-    if agent_id is None:
-        G.nodes[v]["settled_agent"] = None
-        return
-    G.nodes[v]["agents"].add(agent_id)
-    G.nodes[v]["settled_agent"] = agent_id
 
 
 def _move_agent(G, agents, agent_id, from_node, out_port, snap=True):
@@ -216,7 +196,7 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
     if psi_x.nodeType == "visited":
         w = _port_neighbor(G, x)
         _move_agent(G, agents, psi_x.ID, x, PORT_ONE)
-        xi_w_id = _xi_id(G, w, {psi_x.ID})
+        xi_w_id = _xi_id(G, w, {psi_x.ID}, agents)
         if xi_w_id is not None:
             psi_w_id = xi_w_id ##########
             agents[psi_w_id].vacatedNeighbor = True
@@ -237,7 +217,8 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
 
     if psi_x.portAtParent == PORT_ONE:
         z, _ = _move_agent(G, agents, psi_x.ID, x, psi_x.parentPort)
-        psi_z = _psi(G, agents, z)
+        psi_z_id = _xi_id(G, agents, z)
+        psi_z = agents[psi_z_id]
         if psi_z.vacatedNeighbor==False:
             psi_z.state = "settledScout"
             A_vacated.add(psi_z.ID)
@@ -270,53 +251,50 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                 Delta_prime = min(s + 1, delta_x - psi_x.checked)
             y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort)
             a.scoutEdgeType = edge_type(G, x, y)
-            xi_y_id = _xi_id(G, y, set(A_scout))
+            xi_y_id = _xi_id(G, y, set(A_scout), agents)
             if xi_y_id is not None:
-                _settle_at(G, agents, xi_y_id, y) ##########
+                psi_y_id = xi_y_id ##########
                 _move_agent(G, agents, a.ID, y, a.returnPort)
             else:
                 if a.returnPort == PORT_ONE:
-                    _settle_at(G, agents, None, y) ##########
+                    psi_y_id = None ##########
                     _move_agent(G, agents, a.ID, y, a.returnPort)
                 else:
                     z = _port_neighbor(G, y)
-                    a.scoutP1Neighbor = _xi_id(G, z, set(A_scout))
+                    a.scoutP1Neighbor = _xi_id(G, z, set(A_scout), agents)
                     a.scoutPortAtP1Neighbor = G[z][y][f"port_{z}"]
-                    xi_z_id = _xi_id(G, z, set(A_scout))
+                    xi_z_id = _xi_id(G, z, set(A_scout), agents)
                     if xi_z_id is not None:
                         _move_agent(G, agents, a.ID, y, a.returnPort)
                         b_id = next((bid for bid in A_scout if agents[bid].scoutP1Neighbor == xi_z_id and agents[bid].scoutPortAtP1Neighbor == G[z][y][f"port_{z}"]), None)
                         if b_id is not None:
-                            _settle_at(G, agents, b_id, y) ##########
+                            psi_y_id = b_id ##########
                         else:
-                            _settle_at(G, agents, None, y)  ##########
+                            psi_y_id = None  ##########
                     else:
                         if (G[z][y][f"port_{z}"]==PORT_ONE):
-                            _settle_at(G, agents, None, y)  ##########
+                            psi_y_id = None  ##########
                             _move_agent(G, agents, a.ID, y, a.returnPort)
                         else:
                             w = _port_neighbor(G, z)
-                            xi_w_id = _xi_id(G, w, set(A_scout))
-                            a.scoutP1P1Neighbor = _xi_id(G, w, set(A_scout))
+                            xi_w_id = _xi_id(G, w, set(A_scout), agents)
+                            a.scoutP1P1Neighbor = _xi_id(G, w, set(A_scout), agents)
                             a.scoutPortAtP1P1Neighbor = G[w][z][f"port_{w}"]
-                            if _xi_id(G, w, set(A_scout)) is None:
-                                _settle_at(G, agents, None, y)  ##########
+                            if _xi_id(G, w, set(A_scout), agents) is None:
+                                psi_y_id = None  ##########
                             else:
                                 _move_agent(G, agents, a.ID, y, a.returnPort)
                                 c_id = next((cid for cid in A_scout if agents[cid].scoutP1Neighbor == xi_w_id and agents[cid].scoutPortAtP1Neighbor == G[w][z][f"port_{w}"]), None)
                                 if c_id is not None:
                                     b_id = next((bid for bid in A_scout if agents[bid].scoutP1Neighbor == c_id and agents[bid].scoutPortAtP1Neighbor == G[z][y][f"port_{z}"]), None)
                                     if b_id is not None:
-                                        _settle_at(G, agents, b_id, y)  ##########
+                                        psi_y_id = b_id  ##########
                                     else:
-                                        _settle_at(G, agents, None, y)  ##########
+                                        psi_y_id = None  ##########
                                 else:
-                                    _settle_at(G, agents, None, y)  ##########
+                                    psi_y_id = None  ##########
             
-            psi_y_id = _psi_id(G, y)
-            psi_y_node_type = agents[psi_y_id].nodeType if agents[psi_y_id] is not None else None
-            psi_y_id = agents[psi_y_id].ID if agents[psi_y_id] is not None else None
-            a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, psi_y_node_type, psi_y_id)
+            a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id else None), psi_y_id)
             j+=1
 
         psi_x.checked = psi_x.checked+Delta_prime
@@ -337,12 +315,11 @@ def retrace(G, agents, A_vacated):
         amin_id = min(A_vacated)
         amin = agents[amin_id]
         v = amin.node
-        xi_v_id = _xi_id(G, v, set(A_vacated))
+        xi_v_id = _xi_id(G, v, set(A_vacated), agents)
+        psi_v_id = xi_v_id
         if xi_v_id is None:
             target_id = amin.nextAgentID
             a = agents[target_id]
-            if a.currentnode != v:
-                raise RuntimeError("Retrace invariant violated: target agent not at current node v")
             a.state = "settled"
             A_vacated.discard(target_id)
             if len(A_vacated) == 0:
@@ -350,11 +327,11 @@ def retrace(G, agents, A_vacated):
             else:
                 amin_id = min(A_vacated)
                 amin = agents[amin_id]
-            _settle_at(G, agents, a.ID, v)
+            psi_v_id = a.ID
         if not A_vacated:
             break
 
-        psi_v = agents[_psi_id(G, v)]
+        psi_v = agents[psi_v_id]
         if psi_v.recentChild is not None:
             if psi_v.recentChild == amin.arrivalPort:
                 if amin.siblingDetails is None:
@@ -390,27 +367,23 @@ def rooted_async(G, agents, root_node):
     _snapshot(f"rooted_async:enter(root={root_node})", G, agents)  # NEW
 
     A = set(agents.keys())
-    for aid in A:
-        agents[aid].node = root_node
-        G.nodes[root_node]["agents"].add(aid)
-    A_unsettled = A
+    A_unsettled = set(A)
     A_vacated = set()
 
     while A_unsettled:
         v = agents[min(A_unsettled | A_vacated)].node
         A_scout = set(A_unsettled) | set(A_vacated)
         amin = agents[min(A_scout)]
-
-        if G.nodes[v]["settled_agent"] is None:
-            psi_id = max(A_unsettled) if A_unsettled else None
-            _settle_at(G, agents, psi_id, v)
-            psi_v = agents[psi_id]
+        psi_v_id = _xi_id(G, v, {}, agents)
+        if psi_v_id is None:
+            psi_v_id = max(A_unsettled) if A_unsettled else None
+            psi_v = agents[psi_v_id]
             psi_v.state = "settled"
             psi_v.parent = (amin.prevID, amin.childPort)
             amin.childPort = None
             psi_v.parentPort = amin.arrivalPort
-            A_unsettled.remove(psi_id)
-            _snapshot(f"rooted_async:settled(psi={psi_id},v={v})", G, agents)  # NEW
+            A_unsettled.remove(psi_v_id)
+            _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents)  # NEW
             if not A_unsettled:
                 break
 
@@ -418,29 +391,22 @@ def rooted_async(G, agents, root_node):
         k = len(A)
         delta_v = G.degree[v]
         if delta_v >= k - 1:
-            parallel_probe(G, agents, v, A_scout)
-            empty_ports = []
-            for aid in sorted(A_scout):
-                sr = agents[aid].scoutResult
-                if not sr:
-                    continue
-                pxy, _, _, psi_y_id = sr
-                if psi_y_id is None:
-                    empty_ports.append(pxy)
-            psi_v_id = _psi_id(G, v)
-            movers = [aid for aid in sorted(A_unsettled) if aid != psi_v_id]
-            for aid, out_port in zip(movers, empty_ports):
-                y, _ = _move_agent(G, agents, aid, v, out_port)
-                agents[aid].state = "settled"
-                _settle_at(G, agents, aid, y)
-                A_unsettled.discard(aid)
-            break
+            parallel_probe(G, agents, v, agents[psi_v_id], A_scout)
+            probe_items = sorted(agents[psi_v_id].probeResultsByPort.items(), key=lambda kv: kv[0])
+            empty_ports = [sr[0] for _, sr in probe_items[: (k - 1)] if sr and sr[3] is None]
+            movers = sorted(A_unsettled - {psi_v_id})
+            if len(empty_ports) >= len(movers):
+                for aid, out_port in zip(movers, empty_ports):
+                    y, _ = _move_agent(G, agents, aid, v, out_port)
+                    agents[aid].state = "settled"
+                    A_unsettled.discard(aid)
+                break
 
-        psi_v = _psi(G, agents, v)
+        psi_v = agents[psi_v_id]
         psi_v.sibling = amin.siblingDetails
         amin.siblingDetails = None
-        nextPort = parallel_probe(G, agents, v, set(A_unsettled) | set(A_vacated))
-        psi_v.state = can_vacate(G, agents, v, A_vacated)
+        nextPort = parallel_probe(G, agents, v, psi_v, set(A_unsettled) | set(A_vacated))
+        psi_v.state = can_vacate(G, agents, v, psi_v, A_vacated)
         if psi_v.state == "settledScout":
             A_vacated.add(psi_v.ID)
             A_scout = set(A_unsettled) | set(A_vacated)

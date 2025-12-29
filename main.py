@@ -6,10 +6,10 @@ import agent_help_scouts
 
 def main():
     # ─── demo topology ───
-    nodes  = 7
-    agent_count = 7
+    nodes  = 8
+    agent_count = 8
 
-    G = graph_utils.create_port_labeled_graph(nodes, 2, 42)
+    G = graph_utils.create_port_labeled_graph(nodes, 4, 42)
     agents = [agent_help_scouts.Agent(i, 0) for i in range(agent_count)]
 
     # ─── run ───

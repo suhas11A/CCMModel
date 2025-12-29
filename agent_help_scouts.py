@@ -212,11 +212,11 @@ def _move_group(G, agents, agent_ids, from_node, out_port):
     if to_node is None:
         raise ValueError(f"Invalid port {out_port} at node {from_node}")
 
-    _snapshot(f"move_group(from={from_node},p={out_port},to={to_node},|A|={len(agent_ids)})", G, agents)
 
     for aid in list(agent_ids):
         _move_agent(G, agents, aid, from_node, out_port, snap=False)
 
+    _snapshot(f"move_group(from={from_node},p={out_port},to={to_node},|A|={len(agent_ids)})", G, agents)
     return to_node
 
 def dbg_tree_check(G, agents, tag=""):
@@ -393,6 +393,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
         else:
             psi_x.probeResult = best
 
+    _snapshot(f"parallel_probe:exit", G, agents)  # NEW
     return (psi_x.probeResult[0] if psi_x.probeResult else None)
 
 
