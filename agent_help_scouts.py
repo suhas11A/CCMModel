@@ -438,6 +438,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
         s = len(A_scout)
         Delta_prime = min(s, delta_x - psi_x.checked)
         j = 0
+        jk = 0
         while j<Delta_prime:
             round_number = round_number_og
             port = j + psi_x.checked
@@ -445,7 +446,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
                 j += 1
                 Delta_prime = min(s + 1, delta_x - psi_x.checked)
                 continue
-            a = agents[A_scout[j]]
+            a = agents[A_scout[jk]]
             a.scoutPort = port
             y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort, round_number)
             round_number+=1
@@ -511,6 +512,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
             a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id is not None else "unvisited"), psi_y_id)
             psi_x.probeResultsByPort[G[x][y][f"port_{x}"]] = a.scoutResult
             j+=1
+            jk+=1
             rounds_max = max(rounds_max, round_number-round_number_og)
 
         psi_x.checked = psi_x.checked+Delta_prime
