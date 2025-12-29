@@ -179,9 +179,7 @@ function updateTooltip(node, event) {
 
     if (
         filteredPositions.length <= stepIndex ||
-        filteredStatuses.length <= stepIndex ||
-        filteredLeaders.length <= stepIndex ||
-        filteredLevels.length <= stepIndex
+        filteredStatuses.length <= stepIndex
     ) {
         nodeTooltip.innerHTML = content + "No data for this step.";
         return;
@@ -189,22 +187,9 @@ function updateTooltip(node, event) {
 
     const positionsAtStep = filteredPositions[stepIndex]?.[1] || [];
     const statusesAtStep  = filteredStatuses[stepIndex]?.[1] || [];
-    const leadersAtStep   = filteredLeaders[stepIndex]?.[1] || [];
-    const levelsAtStep    = filteredLevels[stepIndex]?.[1] || [];
 
     const nodeStatesDict = filteredNodeStates?.[stepIndex]?.[1] || {};
     const settledState = nodeStatesDict[nodeId]; // node-level state (if you store it that way)
-
-    const statusToText = (s) => {
-        switch (s) {
-            case 0: return "SETTLED";
-            case 1: return "UNSETTLED";
-            case 2: return "SETTLED_WAIT";
-            case 3: return "SCOUT";
-            case 4: return "VACATED";
-            default: return `UNKNOWN(${s})`;
-        }
-    };
 
     // Collect ALL agents currently at this node
     const agentIdxsHere = [];
@@ -219,16 +204,12 @@ function updateTooltip(node, event) {
 
         for (const i of agentIdxsHere) {
             const status = statusesAtStep[i];
-            const leaderId = leadersAtStep[i];
-            const level = levelsAtStep[i];
 
-            content += `<strong>A${i}</strong><br>`;
-            content += `  Status: ${statusToText(status)}<br>`;
-            content += `  Leader: ${leaderId !== undefined ? `A${leaderId}` : "(N/A)"}<br>`;
-            content += `  Level: ${level !== undefined ? level : "(N/A)"}<br>`;
+            content += `<strong>A${i}</strong>`;
+            content += ` : ${status}<br>`;
 
             // If THIS agent is settled/settled_wait, include ports (node-level state)
-            if (status === 0 || status === 2) {
+            if (status === "settled" || status === "settledScout") {
                 const parentPort = settledState?.parent_port ?? "(N/A)";
                 const checkedPort = settledState?.checked_port ?? "(N/A)";
                 const maxScoutedPort = settledState?.max_scouted_port ?? "(N/A)";
@@ -239,8 +220,6 @@ function updateTooltip(node, event) {
                 content += `  Max Scouted: ${maxScoutedPort}<br>`;
                 content += `  Next Port: ${nextPort}<br>`;
             }
-
-            content += `<br>`; // spacer between agents
         }
     }
 
