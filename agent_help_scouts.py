@@ -411,7 +411,7 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated, round_number):
         if psi_z.vacatedNeighbor==False:
             psi_z.state = "settledScout"
             A_vacated.add(psi_z.ID)
-            _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent, round_number+1)
+            _move_group(G, agents, {psi_x.ID, psi_z.ID}, z, psi_x.portAtParent, round_number+1)
             psi_x.vacatedNeighbor = True
             _snapshot(f"can_vacate:exit(x={x})", G, agents, round_number+2)  # NEW
             return "settled", 4
