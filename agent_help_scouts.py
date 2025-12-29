@@ -11,14 +11,14 @@ class SIM_DATA:
         self.all_leaders = []
         self.all_levels = []
         self.all_node_states = []
-        self.step = 0
+        self.rounds = 0
     def clearr(self):
         self.all_positions = []
         self.all_statuses = []
         self.all_leaders = []
         self.all_levels = []
         self.all_node_states = []
-        self.step = 0
+        self.rounds = 0
 
 simmer = SIM_DATA()
 
@@ -42,15 +42,129 @@ def _positions_and_statuses(agents):
     return positions, statuses
 
 
-def _snapshot(label, G, agents):
+import copy
+
+def _snapshot(label, G, agents, round_number, agent_id=-1):
     arr, by_id = _agents_as_list_and_map(agents)
-    positions, statuses = _positions_and_statuses(arr)
-    simmer.all_positions.append((label, positions))
-    simmer.all_statuses.append((label, statuses))
-    simmer.all_node_states.append((label, {}))
-    simmer.all_leaders.append((label, []))
-    simmer.all_levels.append((label, []))
-    print(positions, ",", statuses)
+
+    cur_positions, cur_statuses = _positions_and_statuses(arr)
+    simmer.rounds = len(simmer.all_positions)
+
+    def _agent_index_in_arr(aid):
+        for i, a in enumerate(arr):
+            if getattr(a, "ID", None) == aid:
+                return i
+        raise KeyError(f"agent_id={aid} not found in arr")
+
+    def _get_agent_value(container, aid):
+        if isinstance(container, dict):
+            return container[aid]
+        if isinstance(container, (list, tuple)):
+            idx = _agent_index_in_arr(aid)
+            return container[idx]
+        raise TypeError(f"Unsupported container type: {type(container)}")
+
+    def _set_agent_value(container, aid, value):
+        if isinstance(container, dict):
+            container[aid] = value
+            return container
+        if isinstance(container, list):
+            idx = _agent_index_in_arr(aid)
+            container[idx] = value
+            return container
+        if isinstance(container, tuple):
+            # convert to list -> edit -> back to tuple
+            tmp = list(container)
+            idx = _agent_index_in_arr(aid)
+            tmp[idx] = value
+            return tuple(tmp)
+        raise TypeError(f"Unsupported container type: {type(container)}")
+
+    def _update_label_at(idx, new_label):
+        simmer.all_positions[idx]   = (new_label, simmer.all_positions[idx][1])
+        simmer.all_statuses[idx]    = (new_label, simmer.all_statuses[idx][1])
+        simmer.all_node_states[idx] = (new_label, simmer.all_node_states[idx][1])
+        simmer.all_leaders[idx]     = (new_label, simmer.all_leaders[idx][1])
+        simmer.all_levels[idx]      = (new_label, simmer.all_levels[idx][1])
+
+    def _insert_new_round(new_label, base_positions, base_statuses, base_node_states, base_leaders, base_levels):
+        simmer.all_positions.append((new_label, base_positions))
+        simmer.all_statuses.append((new_label, base_statuses))
+        simmer.all_node_states.append((new_label, base_node_states))
+        simmer.all_leaders.append((new_label, base_leaders))
+        simmer.all_levels.append((new_label, base_levels))
+        simmer.rounds = len(simmer.all_positions)
+    
+    if round_number > simmer.rounds:
+        raise ValueError(f"round_number={round_number} > simmer.rounds={simmer.rounds}")
+
+    if agent_id == -1:
+        if round_number < simmer.rounds:
+            _update_label_at(round_number, label)
+
+        elif round_number == simmer.rounds:
+            if simmer.rounds == 0:
+                base_positions   = copy.deepcopy(cur_positions)
+                base_statuses    = copy.deepcopy(cur_statuses)
+                base_node_states = {}
+                base_leaders     = []
+                base_levels      = []
+            else:
+                base_positions   = copy.deepcopy(simmer.all_positions[-1][1])
+                base_statuses    = copy.deepcopy(simmer.all_statuses[-1][1])
+                base_node_states = copy.deepcopy(simmer.all_node_states[-1][1])
+                base_leaders     = copy.deepcopy(simmer.all_leaders[-1][1])
+                base_levels      = copy.deepcopy(simmer.all_levels[-1][1])
+
+            _insert_new_round(label, base_positions, base_statuses, base_node_states, base_leaders, base_levels)
+
+        else:
+            raise ValueError("Unreachable state")
+
+        print(cur_positions, ",", cur_statuses)
+        return
+    
+    if round_number < simmer.rounds:
+        _update_label_at(round_number, label)
+
+        stored_positions = copy.deepcopy(simmer.all_positions[round_number][1])
+        stored_statuses  = copy.deepcopy(simmer.all_statuses[round_number][1])
+
+        new_agent_pos = _get_agent_value(cur_positions, agent_id)
+        new_agent_sta = _get_agent_value(cur_statuses, agent_id)
+
+        stored_positions = _set_agent_value(stored_positions, agent_id, new_agent_pos)
+        stored_statuses  = _set_agent_value(stored_statuses, agent_id, new_agent_sta)
+
+        simmer.all_positions[round_number] = (label, stored_positions)
+        simmer.all_statuses[round_number]  = (label, stored_statuses)
+
+    elif round_number == simmer.rounds:
+        if simmer.rounds == 0:
+            base_positions   = copy.deepcopy(cur_positions)
+            base_statuses    = copy.deepcopy(cur_statuses)
+            base_node_states = {}
+            base_leaders     = []
+            base_levels      = []
+        else:
+            base_positions   = copy.deepcopy(simmer.all_positions[-1][1])
+            base_statuses    = copy.deepcopy(simmer.all_statuses[-1][1])
+            base_node_states = copy.deepcopy(simmer.all_node_states[-1][1])
+            base_leaders     = copy.deepcopy(simmer.all_leaders[-1][1])
+            base_levels      = copy.deepcopy(simmer.all_levels[-1][1])
+
+        new_agent_pos = _get_agent_value(cur_positions, agent_id)
+        new_agent_sta = _get_agent_value(cur_statuses, agent_id)
+
+        base_positions = _set_agent_value(base_positions, agent_id, new_agent_pos)
+        base_statuses  = _set_agent_value(base_statuses, agent_id, new_agent_sta)
+
+        _insert_new_round(label, base_positions, base_statuses, base_node_states, base_leaders, base_levels)
+
+    else:
+        raise ValueError(f"round_number={round_number} > simmer.rounds={simmer.rounds}")
+
+    print(cur_positions, ",", cur_statuses)
 
     
 
@@ -185,7 +299,7 @@ def _clear_node_fields(G):
         G.nodes[u]["agents"] = set()
 
 
-def _move_agent(G, agents, agent_id, from_node, out_port, snap=True):
+def _move_agent(G, agents, agent_id, from_node, out_port, round_number):
     print(f"moving agent {agent_id} from {from_node} thru {out_port} into {_port_neighbor(G, from_node, out_port)}")
     if agents[agent_id].node != from_node:
         raise RuntimeError(f"Agent {agent_id} not at {from_node}, at {agents[agent_id].node}")
@@ -200,23 +314,22 @@ def _move_agent(G, agents, agent_id, from_node, out_port, snap=True):
     a.node = to_node
     a.arrivalPort = _port(G, to_node, from_node)
 
-    if snap:
-        _snapshot(f"move_agent(a={agent_id},from={from_node},p={out_port},to={to_node})", G, agents)  # NEW
+    _snapshot(f"move_agent(a={agent_id},from={from_node},p={out_port},to={to_node})", G, agents, round_number, agent_id)  # NEW
 
     in_port = G[to_node][from_node][f"port_{to_node}"]
     return to_node, in_port
 
 
-def _move_group(G, agents, agent_ids, from_node, out_port):
+def _move_group(G, agents, agent_ids, from_node, out_port, round_number):
     to_node = _port_neighbor(G, from_node, out_port)
     if to_node is None:
         raise ValueError(f"Invalid port {out_port} at node {from_node}")
 
 
     for aid in list(agent_ids):
-        _move_agent(G, agents, aid, from_node, out_port, snap=False)
+        _move_agent(G, agents, aid, from_node, out_port, round_number)
 
-    _snapshot(f"move_group(from={from_node},p={out_port},to={to_node},|A|={len(agent_ids)})", G, agents)
+    _snapshot(f"move_group(from={from_node},p={out_port},to={to_node},|A|={len(agent_ids)})", G, agents, round_number)
     return to_node
 
 def dbg_tree_check(G, agents, tag=""):
@@ -255,21 +368,19 @@ def dbg_tree_check(G, agents, tag=""):
             print(f"  !! 2-CYCLE in parent IDs: {cid} <-> {pid}")
 
 
-def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
+def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated, round_number):
     if psi_x.parentPort is None:
-        return "settled"
+        return "settled", 0
     frame = inspect.currentframe().f_back
     info = inspect.getframeinfo(frame)
     print(f"Called can vacate from line {info.lineno} in function {info.function}")
-    _snapshot(f"can_vacate:enter(x={x})", G, agents)  # NEW
 
     if psi_x.parentPort is None:
-        _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)  # NEW
-        return "settled"
+        return "settled", 0
 
     if psi_x.nodeType == "visited":
         w = _port_neighbor(G, x)
-        _move_agent(G, agents, psi_x.ID, x, PORT_ONE)
+        _move_agent(G, agents, psi_x.ID, x, PORT_ONE, round_number)
         xi_w_id = _xi_id(G, w, {psi_x.ID}, agents)
         p_wx = _port(G, w, x)
         psi_x.P1Neighbor = xi_w_id
@@ -277,77 +388,78 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated):
         if xi_w_id is not None:
             psi_w_id = xi_w_id
             agents[psi_w_id].vacatedNeighbor = True
-            _move_agent(G, agents, psi_x.ID, w, p_wx)
-            _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)
-            return "settledScout"
-        _move_agent(G, agents, psi_x.ID, w, p_wx)
-        _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)
-        return "settled"
+            _move_agent(G, agents, psi_x.ID, w, p_wx,round_number+1)
+            return "settledScout", 2
+        _move_agent(G, agents, psi_x.ID, w, p_wx, round_number+1)
+        return "settled", 2
 
     if ((psi_x.nodeType == "fullyVisited") and (psi_x.vacatedNeighbor is False)):
-        _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)
-        return "settledScout"
+        return "settledScout", 0
 
     if psi_x.nodeType == "partiallyVisited":
-        _snapshot(f"can_vacate:exit(x={x},state=settledScout)", G, agents)
-        return "settledScout"
+        return "settledScout", 0
 
     if psi_x.portAtParent == PORT_ONE:
-        z, _ = _move_agent(G, agents, psi_x.ID, x, psi_x.parentPort)
+        z, _ = _move_agent(G, agents, psi_x.ID, x, psi_x.parentPort, round_number)
         psi_z_id = _xi_id(G, z, {psi_x.ID}, agents)
         psi_z = agents[psi_z_id]
         if psi_z.vacatedNeighbor==False:
             psi_z.state = "settledScout"
             A_vacated.add(psi_z.ID)
-            _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent)
+            _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent, round_number+1)
             psi_x.vacatedNeighbor = True
-            _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)
-            return "settled"
+            return "settled", 2
         else:
-            _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent)
-            _snapshot(f"can_vacate:exit(x={x},state=settled)", G, agents)
-            return "settled"
+            _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent, round_number+1)
+            return "settled", 2
 
 
-def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
+def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og):
     frame = inspect.currentframe().f_back
     info = inspect.getframeinfo(frame)
     print(f"Called parallel probe from line {info.lineno} in function {info.function}")
-    _snapshot(f"parallel_probe:enter(x={x})", G, agents)  # NEW
+    _snapshot(f"parallel_probe:enter(x={x})", G, agents, round_number_og)  # NEW
+    round_number_og+=1
 
     psi_x.probeResultsByPort = {}
     psi_x.probeResult = None
     psi_x.checked = 0
     delta_x = G.degree[x]
+    rounds_max = 0
     while psi_x.checked < delta_x:
         A_scout = sorted(A_scout)
         s = len(A_scout)
         Delta_prime = min(s, delta_x - psi_x.checked)
         j = 0
         while j<Delta_prime:
+            round_number = round_number_og
             port = j + psi_x.checked
             if psi_x.parentPort is not None and port == psi_x.parentPort:
                 j += 1
                 Delta_prime = min(s + 1, delta_x - psi_x.checked)
             a = agents[A_scout[j]]
             a.scoutPort = port
-            y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort)
+            y, a.returnPort = _move_agent(G, agents, a.ID, x, a.scoutPort, round_number)
+            round_number+=1
             a.scoutEdgeType = edge_type(G, x, y)
             xi_y_id = _xi_id(G, y, set(A_scout), agents)
             if xi_y_id is not None:
                 psi_y_id = xi_y_id
-                _move_agent(G, agents, a.ID, y, a.returnPort)
+                _move_agent(G, agents, a.ID, y, a.returnPort, round_number)
+                round_number+=1
             else:
                 if a.returnPort == PORT_ONE:
                     psi_y_id = None
-                    _move_agent(G, agents, a.ID, y, a.returnPort)
+                    _move_agent(G, agents, a.ID, y, a.returnPort, round_number)
+                    round_number+=1
                 else:
                     z = _port_neighbor(G, y)
                     a.scoutP1Neighbor = _xi_id(G, z, set(A_scout), agents)
                     a.scoutPortAtP1Neighbor = G[z][y][f"port_{z}"]
                     xi_z_id = _xi_id(G, z, set(A_scout), agents)
                     if xi_z_id is not None:
-                        _move_agent(G, agents, a.ID, y, a.returnPort)
+                        _move_agent(G, agents, a.ID, y, a.returnPort, round_number)
+                        round_number+=1
                         b_id = next((bid for bid in A_scout if agents[bid].P1Neighbor == xi_z_id and agents[bid].portAtP1Neighbor == G[z][y][f"port_{z}"]), None)
                         if b_id is not None:
                             psi_y_id = b_id
@@ -356,17 +468,20 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
                     else:
                         if (G[z][y][f"port_{z}"]==PORT_ONE):
                             psi_y_id = None
-                            _move_agent(G, agents, a.ID, y, a.returnPort)
+                            _move_agent(G, agents, a.ID, y, a.returnPort, round_number)
+                            round_number+=1
                         else:
                             w = _port_neighbor(G, z)
                             xi_w_id = _xi_id(G, w, set(A_scout), agents)
                             a.scoutP1P1Neighbor = _xi_id(G, w, set(A_scout), agents)
                             a.scoutPortAtP1P1Neighbor = G[w][z][f"port_{w}"]
                             if _xi_id(G, w, set(A_scout), agents) is None:
-                                _move_agent(G, agents, a.ID, y, a.returnPort)
+                                _move_agent(G, agents, a.ID, y, a.returnPort, round_number)
+                                round_number+=1
                                 psi_y_id = None
                             else:
-                                _move_agent(G, agents, a.ID, y, a.returnPort)
+                                _move_agent(G, agents, a.ID, y, a.returnPort, round_number)
+                                round_number+=1
                                 c_id = next((cid for cid in A_scout if agents[cid].P1Neighbor == xi_w_id and agents[cid].portAtP1Neighbor == G[w][z][f"port_{w}"]), None)
                                 if c_id is not None:
                                     b_id = next((bid for bid in A_scout if agents[bid].P1Neighbor == c_id and agents[bid].portAtP1Neighbor == G[z][y][f"port_{z}"]), None)
@@ -380,6 +495,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
             a.scoutResult = (G[x][y][f"port_{x}"], a.scoutEdgeType, (agents[psi_y_id].nodeType if psi_y_id is not None else "unvisited"), psi_y_id)
             psi_x.probeResultsByPort[G[x][y][f"port_{x}"]] = a.scoutResult
             j+=1
+            rounds_max = max(rounds_max, round_number-round_number_og)
 
         psi_x.checked = psi_x.checked+Delta_prime
         results = list(psi_x.probeResultsByPort.values())
@@ -392,16 +508,17 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout):
         else:
             psi_x.probeResult = best
 
-    _snapshot(f"parallel_probe:exit", G, agents)  # NEW
-    return (psi_x.probeResult[0] if psi_x.probeResult else None)
+    _snapshot(f"parallel_probe:exit", G, agents, round_number_og+rounds_max)  # NEW
+    return (psi_x.probeResult[0] if psi_x.probeResult else None), (rounds_max+1)
 
 
-def retrace(G, agents, A_vacated):
+def retrace(G, agents, A_vacated, round_number):
     frame = inspect.currentframe().f_back
     info = inspect.getframeinfo(frame)
     print(f"Called retrace from line {info.lineno} in function {info.function}")
     print(A_vacated)
-    _snapshot("retrace:enter", G, agents)  # NEW
+    _snapshot("retrace:enter", G, agents, round_number)  # NEW
+    round_number+=1
 
     while A_vacated:
         dbg_tree_check(G, agents, tag=f"retrace loop v={agents[min(A_vacated)].node} Avacated={sorted(A_vacated)}")
@@ -464,14 +581,17 @@ def retrace(G, agents, A_vacated):
             amin.nextPort = psi_v.parentPort
             amin.siblingDetails = psi_v.sibling
 
-        _move_group(G, agents, A_vacated, v, amin.nextPort)
+        _move_group(G, agents, A_vacated, v, amin.nextPort, round_number)
+        round_number+=1
 
-    _snapshot("retrace:exit", G, agents)  # NEW
+    _snapshot("retrace:exit", G, agents, round_number)  # NEW
+    round_number+=1
+    return round_number
 
 
 def rooted_async(G, agents, root_node):
-    _snapshot(f"rooted_async:enter(root={root_node})", G, agents)  # NEW
-
+    _snapshot(f"rooted_async:enter(root={root_node})", G, agents, 0)  # NEW
+    round_number = 1
     A = set(agents.keys())
     A_unsettled = set(A)
     A_vacated = set()
@@ -511,7 +631,8 @@ def rooted_async(G, agents, root_node):
             dbg_tree_check(G, agents, tag="after settle parent assign")
             A_unsettled.remove(psi_v_id)
             amin.prevID = psi_v.ID  ################
-            _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents)  # NEW
+            _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents, round_number)  # NEW
+            round_number+=1
             if not A_unsettled:
                 break
 
@@ -520,24 +641,28 @@ def rooted_async(G, agents, root_node):
         delta_v = G.degree[v]
         if delta_v >= k - 1:
             print("Taking shortcut hehe")
-            parallel_probe(G, agents, v, agents[psi_v_id], A_scout)
+            _, rounds_max = parallel_probe(G, agents, v, agents[psi_v_id], A_scout, round_number)
+            round_number+=rounds_max
             probe_items = sorted(agents[psi_v_id].probeResultsByPort.items(), key=lambda kv: kv[0])
             empty_ports = [sr[0] for _, sr in probe_items[: (k - 1)] if sr and sr[3] is None]
             movers = sorted(A_unsettled - {psi_v_id})
             if len(empty_ports) >= len(movers):
                 for aid, out_port in zip(movers, empty_ports):
-                    y, _ = _move_agent(G, agents, aid, v, out_port)
+                    y, _ = _move_agent(G, agents, aid, v, out_port, round_number)
                     agents[aid].state = "settled"
                     A_unsettled.discard(aid)
+                round_number+=1
                 break
 
         psi_v = agents[psi_v_id]
         psi_v.sibling = amin.siblingDetails
         amin.siblingDetails = None
-        nextPort = parallel_probe(G, agents, v, psi_v, A_scout)
+        nextPort, rounds_max = parallel_probe(G, agents, v, psi_v, A_scout, round_number)
+        round_number+=rounds_max
         scout_results = list(getattr(psi_v, "probeResultsByPort", {}).values())
         update_node_type_after_probe(G, v, psi_v, scout_results)
-        psi_v.state = can_vacate(G, agents, v, psi_v, A_vacated)
+        psi_v.state, rounds_max = can_vacate(G, agents, v, psi_v, A_vacated, round_number)
+        round_number+=rounds_max
         if psi_v.state in ("settled", "settledScout"):
             A_unsettled.discard(psi_v.ID)
         if psi_v.state == "settledScout":
@@ -557,9 +682,11 @@ def rooted_async(G, agents, root_node):
                 amin.siblingDetails = amin.childDetails
                 amin.childDetails = None
                 psi_v.recentChild = nextPort
-            _snapshot(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents)  # NEW
+            _snapshot(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents, round_number)  # NEW
+            round_number+=1
             A_scout = set(A_unsettled) | set(A_vacated)  ################
-            _move_group(G, agents, A_scout, v, nextPort)
+            _move_group(G, agents, A_scout, v, nextPort, round_number)
+            round_number+=1
             amin.childPort = nextPort  ################
             w = _port_neighbor(G, v, nextPort)
             psi_w_id = _xi_id(G, w, exclude_ids=set(), agents=agents)
@@ -578,12 +705,15 @@ def rooted_async(G, agents, root_node):
             amin.childDetails = (psi_v.ID, psi_v.portAtParent)
             amin.childPort = None
             psi_v.recentPort = psi_v.parentPort
-            _snapshot(f"rooted_async:backtrack(v={v},p={psi_v.parentPort})", G, agents)  # NEW
+            _snapshot(f"rooted_async:backtrack(v={v},p={psi_v.parentPort})", G, agents, round_number)  # NEW
+            round_number+=1
             A_scout = set(A_unsettled) | set(A_vacated)  ################
-            _move_group(G, agents, A_scout, v, psi_v.parentPort)
+            _move_group(G, agents, A_scout, v, psi_v.parentPort, round_number)
+            round_number+=1
 
-    retrace(G, agents, A_vacated)
-    _snapshot("rooted_async:exit", G, agents)  # NEW
+    # round_number = retrace(G, agents, A_vacated, round_number)
+    _snapshot("rooted_async:exit", G, agents, round_number)  # NEW
+    round_number+=1
 
 
 # -----------------------------
@@ -598,9 +728,7 @@ def run_simulation(G, agents, max_degree, rounds, starting_positions):
     for aid, a in agents.items():
         G.nodes[a.node]["agents"].add(aid)
 
-    _snapshot("start", G, agents)  # NEW
     root_node = agents[sorted(agents.keys())[0]].node #For rooted only
     rooted_async(G, agents, root_node)
-    _snapshot("end", G, agents)  # NEW
 
     return (simmer.all_positions, simmer.all_statuses, simmer.all_leaders, simmer.all_levels, simmer.all_node_states)
