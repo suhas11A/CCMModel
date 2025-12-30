@@ -298,9 +298,9 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated, round_number):
             return "settled", 4
 
 
-def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og):
-    _snapshot(f"parallel_probe:enter(x={x})", G, agents, round_number_og)
-    round_number_og+=1
+def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og_og):
+    _snapshot(f"parallel_probe:enter(x={x})", G, agents, round_number_og_og)
+    round_number_og_og+=1
 
     psi_x.probeResultsByPort = {}
     psi_x.probeResult = None
@@ -313,6 +313,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
         Delta_prime = min(s, delta_x - psi_x.checked)
         j = 0
         jk = 0
+        round_number_og = round_number_og_og+rounds_max
         while j<Delta_prime:
             round_number = round_number_og
             port = j + psi_x.checked
@@ -387,12 +388,10 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
             psi_x.probeResultsByPort[G[x][y][f"port_{x}"]] = a.scoutResult
             j+=1
             jk+=1
-            rounds_max = max(rounds_max, round_number-round_number_og)
+            rounds_max = max(rounds_max, round_number-round_number_og_og)
 
         psi_x.checked = psi_x.checked+Delta_prime
         results = list(psi_x.probeResultsByPort.values())
-        if not results:
-            results = [agents[a].scoutResult for a in A_scout if agents[a].scoutResult is not None]
         best = min(results, key=_candidate_rank, default=None)
         if best is None or _candidate_rank(best)[0] == 99:
             psi_x.probeResult = None
@@ -502,7 +501,7 @@ def rooted_async(G, agents, root_node):
                 psi_v.parent = (amin.prevID, amin.childPort)
                 psi_v.portAtParent = amin.childPort  ################
             amin.childPort = None
-            print(f"[DBG_SET_PARENT] settled {psi_v.ID}@{psi_v.node} parent={psi_v.parent} parentPort={psi_v.parentPort} portAtParent={psi_v.portAtParent} amin.arrivalPort={amin.arrivalPort} amin.childPort={amin.childPort}")
+            print(f"settled {psi_v.ID}@{psi_v.node} parent={psi_v.parent} parentPort={psi_v.parentPort} portAtParent={psi_v.portAtParent} amin.arrivalPort={amin.arrivalPort} amin.childPort={amin.childPort}")
             A_unsettled.remove(psi_v_id)
             _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents, round_number)
             round_number+=1
