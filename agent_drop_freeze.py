@@ -292,7 +292,7 @@ def _move_out(G, node_to_agents):
 
         G.nodes[v]["agents"].add(a)
 
-def run_simulation(G, agents, max_degree, rounds, starting_positions):
+def run_simulation(G, agents, rounds):
     for node in G.nodes():
         G.nodes[node]["agents"] = set()
         G.nodes[node]["settled_agent"] = None

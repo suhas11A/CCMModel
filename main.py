@@ -10,16 +10,17 @@ def main():
     agent_count = 10
 
     G = graph_utils.create_port_labeled_graph(nodes, 4, 42)
+    graph_utils.randomize_ports(G, 42)
     agents = [agent_help_scouts.Agent(i, 0) for i in range(agent_count)]
 
     # ─── run ───
-    agent_help_scouts.run_simulation(G, agents, 0, 0, {})
+    agent_help_scouts.run_simulation(G, agents)
 
     print("\nAgent final states:")
     for a in agents:
         state = a.state
         print(f"  A{a.ID} @ node {a.node:>2}  →  {state}")
-        print(f"  A{a.ID} @ node {a.home:>2}  →  {state}")
+        print(f"  A{a.ID} @ node {a.home}  →  {state}")
         print()
 
 

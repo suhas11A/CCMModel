@@ -126,7 +126,7 @@ if __name__ == "__main__": # Only print agent info when run directly
 
 # --- Execute Simulation ---
 # Initialize return variables in case simulation doesn't run
-all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = [], [], [], [], []
+all_positions, all_statuses, all_node_settled_states, all_homes, all_tree_edges = [], [], [], [], []
 
 if agents and rounds > 0 and G.number_of_nodes() > 0:
     # pick the correct simulation module
@@ -135,9 +135,7 @@ if agents and rounds > 0 and G.number_of_nodes() > 0:
     else:
         sim_mod = agent_drop_freeze
 
-    all_positions, all_statuses, all_leaders, all_levels, all_node_settled_states = sim_mod.run_simulation(
-        G, agents, max_degree, rounds, start_nodes
-    )
+    all_positions, all_statuses, all_node_settled_states, all_homes, all_tree_edges = sim_mod.run_simulation(G, agents, rounds)
     if __name__ == "__main__": # Only print simulation finished info when run directly
         print(f'Simulation finished after {len(all_positions) - 1} recorded steps.', file=sys.stderr)
 else:
@@ -173,8 +171,8 @@ result = {
   "edges":     edges_data,
   "positions": all_positions,
   "statuses":  all_statuses,
-  "leaders":   all_leaders,
-  "levels":    all_levels,
+  "homes":   all_homes,
+  "tree_edges":    all_tree_edges,
   "node_settled_states": all_node_settled_states
 }
 

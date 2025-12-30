@@ -9,25 +9,51 @@ class SIM_DATA:
     def __init__(self):
         self.all_positions = []
         self.all_statuses = []
-        self.all_leaders = []
-        self.all_levels = []
         self.all_node_states = []
+        self.all_homes = []
+        self.all_tree_edges = []
         self.rounds = 0
     def clearr(self):
         self.all_positions = []
         self.all_statuses = []
-        self.all_leaders = []
-        self.all_levels = []
         self.all_node_states = []
+        self.all_homes = []
+        self.all_tree_edges = []
         self.rounds = 0
 
 simmer = SIM_DATA()
+
+def _compute_tree_edges(G, arr):
+    edges = []
+    seen = set()
+    for a in arr:
+        if a.state not in ("settled", "settledScout"):
+            continue
+        if a.home is None or a.home is BOTTOM:
+            continue
+        if a.parentPort is None or a.parentPort is BOTTOM:
+            continue
+        u = int(a.home) if str(a.home).isdigit() else a.home
+        v = _port_neighbor(G, u, a.parentPort)
+        key = (min(u, v), max(u, v))
+        if key in seen:
+            continue
+        seen.add(key)
+        edges.append({
+            "u": str(u),
+            "v": str(v),
+            "srcPort": a.parentPort,
+            "dstPort": _port(G, v, u),
+        })
+    return edges
 
 def _snapshot(label, G, agents, round_number, agent_id=-1):
     print(label)
     arr = [agents[k] for k in sorted(agents.keys())]
     cur_positions = [[str(a.node)] for a in arr]
     cur_statuses = [[str(a.state)] for a in arr]
+    cur_homes = [[str(a.home)] for a in arr]
+    cur_tree_edges = _compute_tree_edges(G, arr)
     simmer.rounds = len(simmer.all_positions)
 
     def _agent_index_in_arr(aid):
@@ -62,15 +88,15 @@ def _snapshot(label, G, agents, round_number, agent_id=-1):
         simmer.all_positions[idx]   = (new_label, simmer.all_positions[idx][1])
         simmer.all_statuses[idx]    = (new_label, simmer.all_statuses[idx][1])
         simmer.all_node_states[idx] = (new_label, simmer.all_node_states[idx][1])
-        simmer.all_leaders[idx]     = (new_label, simmer.all_leaders[idx][1])
-        simmer.all_levels[idx]      = (new_label, simmer.all_levels[idx][1])
+        simmer.all_homes[idx]     = (new_label, simmer.all_homes[idx][1])
+        simmer.all_tree_edges[idx]      = (new_label, simmer.all_tree_edges[idx][1])
 
-    def _insert_new_round(new_label, base_positions, base_statuses, base_node_states, base_leaders, base_levels):
+    def _insert_new_round(new_label, base_positions, base_statuses, base_node_states, base_homes, base_tree_edges):
         simmer.all_positions.append((new_label, base_positions))
         simmer.all_statuses.append((new_label, base_statuses))
         simmer.all_node_states.append((new_label, base_node_states))
-        simmer.all_leaders.append((new_label, base_leaders))
-        simmer.all_levels.append((new_label, base_levels))
+        simmer.all_homes.append((new_label, base_homes))
+        simmer.all_tree_edges.append((new_label, base_tree_edges))
         simmer.rounds = len(simmer.all_positions)
     
     if round_number > simmer.rounds:
@@ -79,37 +105,45 @@ def _snapshot(label, G, agents, round_number, agent_id=-1):
     if agent_id == -1:
         if round_number < simmer.rounds:
             _update_label_at(round_number, label)
+            simmer.all_tree_edges[round_number]  = (label, cur_tree_edges)
         elif round_number == simmer.rounds:
-            base_positions   = copy.deepcopy(cur_positions)
-            base_statuses    = copy.deepcopy(cur_statuses)
+            base_positions = copy.deepcopy(cur_positions)
+            base_statuses = copy.deepcopy(cur_statuses)
             base_node_states = []
-            base_leaders     = []
-            base_levels      = []
-            _insert_new_round(label, base_positions, base_statuses, base_node_states, base_leaders, base_levels)
+            base_homes = copy.deepcopy(cur_homes)
+            base_tree_edges = copy.deepcopy(cur_tree_edges)
+            _insert_new_round(label, base_positions, base_statuses, base_node_states, base_homes, base_tree_edges)
         return
     
     if round_number < simmer.rounds:
         _update_label_at(round_number, label)
         stored_positions = copy.deepcopy(simmer.all_positions[round_number][1])
         stored_statuses  = copy.deepcopy(simmer.all_statuses[round_number][1])
+        stored_homes  = copy.deepcopy(simmer.all_homes[round_number][1])
         new_agent_pos = _get_agent_value(cur_positions, agent_id)
         new_agent_sta = _get_agent_value(cur_statuses, agent_id)
+        new_agent_hom = _get_agent_value(cur_homes, agent_id)
         stored_positions = _set_agent_value(stored_positions, agent_id, new_agent_pos)
         stored_statuses  = _set_agent_value(stored_statuses, agent_id, new_agent_sta)
+        stored_homes  = _set_agent_value(stored_homes, agent_id, new_agent_hom)
         simmer.all_positions[round_number] = (label, stored_positions)
         simmer.all_statuses[round_number]  = (label, stored_statuses)
+        simmer.all_homes[round_number]  = (label, stored_homes)
+        simmer.all_tree_edges[round_number]  = (label, cur_tree_edges)
 
     elif round_number == simmer.rounds:
         base_positions   = copy.deepcopy(cur_positions)
         base_statuses    = copy.deepcopy(cur_statuses)
         base_node_states = []
-        base_leaders     = []
-        base_levels      = []
+        base_homes       = copy.deepcopy(cur_homes)
+        base_tree_edges = copy.deepcopy(cur_tree_edges)
         new_agent_pos = _get_agent_value(cur_positions, agent_id)
         new_agent_sta = _get_agent_value(cur_statuses, agent_id)
+        new_agent_hom = _get_agent_value(cur_homes, agent_id)
         base_positions = _set_agent_value(base_positions, agent_id, new_agent_pos)
         base_statuses  = _set_agent_value(base_statuses, agent_id, new_agent_sta)
-        _insert_new_round(label, base_positions, base_statuses, base_node_states, base_leaders, base_levels)
+        base_homes  = _set_agent_value(base_homes, agent_id, new_agent_hom)
+        _insert_new_round(label, base_positions, base_statuses, base_node_states, base_homes, base_tree_edges)
 
     
 
@@ -167,6 +201,8 @@ def _port(G, u, v):
 
 def _port_neighbor(G, u, port=PORT_ONE):
     pm = G.nodes[u]["port_map"]
+    if (port not in pm.keys()):
+        raise RuntimeError(f"tried to access port {port} at node {u}, ports = {pm.keys()}")
     return pm[port]
 
 def edge_type(G, u, v):
@@ -412,6 +448,9 @@ def retrace(G, agents, A_vacated, round_number):
     frame = inspect.currentframe().f_back
     info = inspect.getframeinfo(frame)
     print(f"Called retrace from line {info.lineno} in function {info.function}")
+    print(A_vacated)
+    for a in A_vacated:
+        print(agents[a].home)
     _snapshot("retrace:enter", G, agents, round_number)
     round_number+=1
 
@@ -423,6 +462,7 @@ def retrace(G, agents, A_vacated, round_number):
         psi_v_id = xi_v_id
         if xi_v_id is None:
             target_id = amin.nextAgentID
+            print(target_id)
             a = agents[target_id]
             a.state = "settled"
             a.home = a.node
@@ -441,6 +481,9 @@ def retrace(G, agents, A_vacated, round_number):
                     psi_v.recentChild = None
                     amin.nextAgentID, amin.nextPort = psi_v.parentID, psi_v.portAtParent
                     amin.siblingDetails = psi_v.sibling
+                    if (amin.nextPort is None):
+                        print(A_vacated)
+                        raise RuntimeError(f"{A_vacated} -- {amin.ID} nextport is None, psi_v is {psi_v.ID}, home is {psi_v.home}, stat is {psi_v.state}")
                 else:
                     amin.nextAgentID, amin.nextPort = amin.siblingDetails
                     amin.siblingDetails = None
@@ -461,6 +504,8 @@ def retrace(G, agents, A_vacated, round_number):
             amin.nextPort = psi_v.parentPort
             amin.siblingDetails = psi_v.sibling
 
+        A_vacated.discard(psi_v.ID)
+        psi_v.state = "settled"
         _move_group(G, agents, A_vacated, v, amin.nextPort, round_number)
         round_number+=1
 
@@ -475,7 +520,6 @@ def rooted_async(G, agents, root_node):
     A = set(agents.keys())
     A_unsettled = set(A)
     A_vacated = set()
-    last_psi_v_id = None
     while A_unsettled:
         v = agents[min(A_unsettled | A_vacated)].node
         A_scout = set(A_unsettled) | set(A_vacated)
@@ -490,7 +534,6 @@ def rooted_async(G, agents, root_node):
             psi_v_id = max(candidates)
             psi_v = agents[psi_v_id]
             psi_v.state = "settled"
-            psi_v.parentID = last_psi_v_id
             psi_v.home = psi_v.node
             if amin.prevID is None:
                 psi_v.parentID = None
@@ -517,7 +560,6 @@ def rooted_async(G, agents, root_node):
             round_number+=1
             if not A_unsettled:
                 break
-        last_psi_v_id = psi_v_id
         psi_v = agents[psi_v_id]
         amin.prevID = psi_v.ID
         k = len(A)
@@ -591,7 +633,9 @@ def rooted_async(G, agents, root_node):
     round_number+=1
 
 
-def run_simulation(G, agents, max_degree, rounds, starting_positions):
+def run_simulation(G, agents, max_rounds=-1):
+    if max_rounds==-1:
+        max_rounds = 20*len(agents)
     simmer.clearr()
     for u in G.nodes():
         G.nodes[u]["agents"] = set()
@@ -601,6 +645,9 @@ def run_simulation(G, agents, max_degree, rounds, starting_positions):
         G.nodes[a.node]["agents"].add(aid)
 
     root_node = agents[sorted(agents.keys())[0]].node #For rooted only
-    rooted_async(G, agents, root_node)
+    try:
+        rooted_async(G, agents, root_node)
+    except:
+        pass
 
-    return (simmer.all_positions, simmer.all_statuses, simmer.all_leaders, simmer.all_levels, simmer.all_node_states)
+    return (simmer.all_positions, simmer.all_statuses, simmer.all_node_states, simmer.all_homes, simmer.all_tree_edges)
