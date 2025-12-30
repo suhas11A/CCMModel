@@ -398,7 +398,6 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
             results = [agents[a].scoutResult for a in A_scout if agents[a].scoutResult is not None]
         best = min(results, key=_candidate_rank, default=None)
         if best is None or _candidate_rank(best)[0] == 99:
-            print(best)
             psi_x.probeResult = None
         else:
             psi_x.probeResult = best
@@ -423,21 +422,13 @@ def retrace(G, agents, A_vacated, round_number):
         psi_v_id = xi_v_id
         if xi_v_id is None:
             target_id = amin.nextAgentID
-            if (target_id is None) or (target_id not in A_vacated) or (agents[target_id].node != v):
-                at_v = [aid for aid in A_vacated if agents[aid].node == v]
-                if not at_v:
-                    raise RuntimeError(f"retrace: no vacated agents at current node v={v}")
-                target_id = min(at_v)
-                amin.nextAgentID = target_id
             a = agents[target_id]
             a.state = "settled"
             A_vacated.discard(target_id)
-            if len(A_vacated) == 0:
-                amin = None
-            else:
-                amin_id = min(A_vacated)
-                amin = agents[amin_id]
+            amin_id = min(A_vacated)
+            amin = agents[amin_id]
             psi_v_id = a.ID
+
         if not A_vacated:
             break
 
@@ -462,13 +453,6 @@ def retrace(G, agents, A_vacated, round_number):
                 if found is not None:
                     amin.nextAgentID = found
                     amin.nextPort = psi_v.recentChild
-                else:
-                    if psi_v.parent is None or psi_v.parentPort is None:
-                        raise RuntimeError(f"Retrace hit root/backtrack with Avacated still nonempty at v={v}.")
-                    parentID, _portAtParent = psi_v.parent
-                    amin.nextAgentID = parentID
-                    amin.nextPort = psi_v.parentPort
-                    amin.siblingDetails = psi_v.sibling
         else:
             parentID, _portAtParent = psi_v.parent
             amin.nextAgentID = parentID
