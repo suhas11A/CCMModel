@@ -465,7 +465,6 @@ def retrace(G, agents, A_vacated, round_number):
             print(target_id)
             a = agents[target_id]
             a.state = "settled"
-            a.home = a.node
             A_vacated.discard(target_id)
             amin_id = min(A_vacated)
             amin = agents[amin_id]
