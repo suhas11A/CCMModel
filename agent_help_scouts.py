@@ -124,7 +124,7 @@ class Agent:
         self.treeLabel = BOTTOM
 
         self.nodeType = "unvisited"
-        self.parent = (BOTTOM, BOTTOM)
+        self.parentID = BOTTOM
         self.parentPort = BOTTOM
         self.portAtParent = None  
         self.P1Neighbor = BOTTOM
@@ -206,9 +206,9 @@ def update_node_type_after_probe(G, x, psi_x, scout_results):
 
 def reconfigure_if_needed(agents, psi_x, port_to_w, psi_w, arrival_port_at_w):
     if psi_w.nodeType == "partiallyVisited" and arrival_port_at_w == PORT_ONE:
-        psi_w.parent = (psi_x.ID, port_to_w)
-        print(f"[DBG_RECONF] psi_w={psi_w.ID}@{psi_w.node} NEW parent={psi_w.parent} parentPort={psi_w.parentPort}")
-        psi_w.portAtParent = port_to_w  ################
+        psi_w.parentID = psi_x.ID
+        print(f"[DBG_RECONF] psi_w={psi_w.ID}@{psi_w.node} NEW parent={psi_w.parentID} parentPort={psi_w.parentPort}")
+        psi_w.portAtParent = port_to_w 
         psi_w.parentPort = arrival_port_at_w  ################
         psi_w.nodeType = "visited"
 
@@ -439,7 +439,7 @@ def retrace(G, agents, A_vacated, round_number):
             if psi_v.recentChild == amin.arrivalPort:
                 if amin.siblingDetails is None:
                     psi_v.recentChild = None
-                    amin.nextAgentID, amin.nextPort = psi_v.parent
+                    amin.nextAgentID, amin.nextPort = psi_v.parentID, psi_v.portAtParent
                     amin.siblingDetails = psi_v.sibling
                 else:
                     amin.nextAgentID, amin.nextPort = amin.siblingDetails
@@ -449,14 +449,14 @@ def retrace(G, agents, A_vacated, round_number):
                 amin.nextPort = psi_v.recentChild
                 found = None
                 for aid in A_vacated:
-                    if agents[aid].parent == (psi_v.ID, psi_v.recentChild):
+                    if (agents[aid].parentID, agents[aid].portAtParent) == (psi_v.ID, psi_v.recentChild):
                         found = aid
                         break
                 if found is not None:
                     amin.nextAgentID = found
                     amin.nextPort = psi_v.recentChild
         else:
-            parentID, _portAtParent = psi_v.parent
+            parentID = psi_v.parentID
             amin.nextAgentID = parentID
             amin.nextPort = psi_v.parentPort
             amin.siblingDetails = psi_v.sibling
@@ -490,10 +490,10 @@ def rooted_async(G, agents, root_node):
             psi_v_id = max(candidates)
             psi_v = agents[psi_v_id]
             psi_v.state = "settled"
-            psi_v.parent = (last_psi_v_id, psi_v.portAtParent)
+            psi_v.parentID = last_psi_v_id
             psi_v.home = psi_v.node
             if amin.prevID is None:
-                psi_v.parent = (None, None)
+                psi_v.parentID = None
                 psi_v.parentPort = None
                 psi_v.portAtParent = None
             else:
@@ -508,8 +508,8 @@ def rooted_async(G, agents, root_node):
                         f"(prevID={amin.prevID}, arrivalPort={amin.arrivalPort})."
                     )
                 psi_v.parentPort = amin.arrivalPort
-                psi_v.parent = (amin.prevID, amin.childPort)
-                psi_v.portAtParent = amin.childPort  ################
+                psi_v.parentID = amin.prevID
+                psi_v.portAtParent = amin.childPort
             amin.childPort = None
             A_unsettled.remove(psi_v_id)
             A_scout = set(A_unsettled) | set(A_vacated)
