@@ -651,7 +651,7 @@ export function drawCytoscape(containerId, originalData) {
       {
         selector: "edge.tree-edge",
         style: {
-          width: 5,
+          width: 2,
           "line-color": isDark ? "#22c55e" : "#16a34a",   // different from normal edges
           "line-style": "solid",
           "source-label": "",     // hide port labels for overlay edges
