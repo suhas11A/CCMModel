@@ -187,7 +187,6 @@ def _edge_rank(edge_type: str) -> int:
         return 1
     if edge_type == "tpq":
         return 2
-    return 99
 
 def update_node_type_after_probe(G, x, psi_x, scout_results):
     empty = [r for r in scout_results if r[2] == "unvisited"]
@@ -264,8 +263,6 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated, round_number):
     if psi_x.nodeType == "visited":
         w, p_wx = _move_agent(G, agents, psi_x.ID, x, PORT_ONE, round_number)
         xi_w_id = _xi_id(G, w, {psi_x.ID}, agents)
-        psi_x.P1Neighbor = xi_w_id
-        psi_x.portAtP1Neighbor = p_wx
         if xi_w_id is not None:
             psi_w_id = xi_w_id
             agents[psi_w_id].vacatedNeighbor = True
@@ -403,7 +400,7 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og)
             psi_x.probeResult = best
 
     _snapshot(f"parallel_probe:exit", G, agents, round_number_og+rounds_max)
-    return (psi_x.probeResult[0] if psi_x.probeResult else None), (rounds_max+2)
+    return (psi_x.probeResult[0] if psi_x.probeResult is not None else None), (rounds_max+2)
 
 
 def retrace(G, agents, A_vacated, round_number):
