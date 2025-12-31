@@ -342,6 +342,9 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated, round_number):
             _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent, round_number+1)
             _snapshot(f"can_vacate:exit(x={x})", G, agents, round_number+2)
             return "settled", 4
+        
+    _snapshot(f"can_vacate:exit(x={x})", G, agents, round_number)
+    return "settled", 2
 
 
 def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og_og):
@@ -641,9 +644,9 @@ def run_simulation(G, agents, max_rounds=-1):
         G.nodes[a.node]["agents"].add(aid)
 
     root_node = agents[sorted(agents.keys())[0]].node #For rooted only
-    try:
-        rooted_async(G, agents, root_node)
-    except:
-        pass
+    # try:
+    rooted_async(G, agents, root_node)
+    # except:
+    #     pass
 
     return (simmer.all_positions, simmer.all_statuses, simmer.all_node_states, simmer.all_homes, simmer.all_tree_edges)
