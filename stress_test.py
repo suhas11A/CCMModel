@@ -13,31 +13,24 @@ RESET = "\033[0m"
 
 
 def run_one(nodes: int, agent_count: int, degree: int, seed: int):
-    # build graph
     G = graph_utils.create_port_labeled_graph(nodes, degree, seed)
     graph_utils.randomize_ports(G, seed)
-
-    # init agents (same as your main.py)
     agents = [agent_help_scouts.Agent(i, 0) for i in range(agent_count)]
-
-    # run
     agent_help_scouts.run_simulation(G, agents)
-
 
 def main():
     rng = random.Random(0)
 
     degree = 4
-    num_tests = 100
+    num_tests = 1000
 
-    # ~100 different (nodes, agents, seed) combos
     tests = []
-    for _ in range(num_tests):
-        nodes = rng.randint(2, 60)
-        # include cases where agents <= nodes AND agents > nodes
+    while len(tests)<num_tests:
+        nodes = rng.randint(1, 30)
         agent_count = rng.randint(1, 80)
         seed = rng.randint(0, 10_000)
-        tests.append((nodes, agent_count, seed))
+        if (agent_count<=nodes):
+            tests.append((nodes, agent_count, seed))
 
     failures = 0
 

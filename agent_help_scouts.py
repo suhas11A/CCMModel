@@ -48,7 +48,7 @@ def _compute_tree_edges(G, arr):
     return edges
 
 def _snapshot(label, G, agents, round_number, agent_id=-1):
-    print(label)
+    # print(label)
     arr = [agents[k] for k in sorted(agents.keys())]
     cur_positions = [[str(a.node)] for a in arr]
     cur_statuses = [[str(a.state)] for a in arr]
@@ -326,6 +326,10 @@ def can_vacate(G, agents: List["Agent"], x, psi_x, A_vacated, round_number):
     if psi_x.portAtParent == PORT_ONE:
         z, _ = _move_agent(G, agents, psi_x.ID, x, psi_x.parentPort, round_number)
         psi_z_id = _xi_id(G, z, {psi_x.ID}, agents)
+        if psi_z_id is None:  ################
+            _move_agent(G, agents, psi_x.ID, z, psi_x.portAtParent, round_number+1)  ################
+            _snapshot(f"can_vacate:exit(x={x})", G, agents, round_number+2)  ################
+            return "settled", 4  ################
         psi_z = agents[psi_z_id]
         if psi_z.vacatedNeighbor==False:
             psi_z.state = "settledScout"
@@ -449,7 +453,8 @@ def retrace(G, agents, A_vacated, round_number, max_rounds):
     _snapshot("retrace:enter", G, agents, round_number)
     round_number+=1
     siblingDetails = None
-
+    nextAgentID = None
+    nextPort = None
     while A_vacated:
         if round_number>max_rounds:
             raise RuntimeError("Round limit exceeded in retrace")
@@ -459,7 +464,7 @@ def retrace(G, agents, A_vacated, round_number, max_rounds):
         xi_v_id = _xi_id(G, v, set(), agents)
         psi_v_id = xi_v_id
         if xi_v_id is None:
-            target_id = amin.nextAgentID
+            target_id = nextAgentID
             a = agents[target_id]
             a.state = "settled"
             A_vacated.discard(target_id)
@@ -475,35 +480,34 @@ def retrace(G, agents, A_vacated, round_number, max_rounds):
             if psi_v.recentChild == amin.arrivalPort:
                 if siblingDetails is None:
                     psi_v.recentChild = None
-                    amin.nextAgentID, amin.nextPort = psi_v.parentID, psi_v.parentPort
+                    nextAgentID, nextPort = psi_v.parentID, psi_v.parentPort
                     siblingDetails = psi_v.sibling
-                    if (amin.nextPort is None):
+                    if (nextPort is None):
                         raise RuntimeError(f"{A_vacated} -- {amin.ID} nextport is None, psi_v is {psi_v.ID}, home is {psi_v.home}, stat is {psi_v.state}")
                 else:
-                    amin.nextAgentID, amin.nextPort = siblingDetails
+                    nextAgentID, nextPort = siblingDetails
                     siblingDetails = None
-                    psi_v.recentChild = amin.nextPort
+                    psi_v.recentChild = nextPort
             else:
-                amin.nextPort = psi_v.recentChild
+                nextPort = psi_v.recentChild
                 found = None
                 for aid in A_vacated:
                     if (agents[aid].parentID, agents[aid].portAtParent) == (psi_v.ID, psi_v.recentChild):
                         found = aid
                         break
                 if found is not None:
-                    amin.nextAgentID = found
-                    amin.nextPort = psi_v.recentChild
+                    nextAgentID = found
+                    nextPort = psi_v.recentChild
         else:
             parentID = psi_v.parentID
-            amin.nextAgentID = parentID
-            amin.nextPort = psi_v.parentPort
+            nextAgentID = parentID
+            nextPort = psi_v.parentPort
             siblingDetails = psi_v.sibling
 
         A_vacated.discard(psi_v.ID)
         psi_v.state = "settled"
-        _move_group(G, agents, A_vacated, v, amin.nextPort, round_number)
+        _move_group(G, agents, A_vacated, v, nextPort, round_number)
         round_number+=1
-        # print(agents[2].sibling)
 
     _snapshot("retrace:exit", G, agents, round_number)
     round_number+=1
@@ -516,6 +520,8 @@ def rooted_async(G, agents, root_node, max_rounds):
     A = set(agents.keys())
     A_unsettled = set(A)
     A_vacated = set()
+    siblingDetails = None
+    childDetails = None
     while A_unsettled:
         if round_number>max_rounds:
             raise RuntimeError("Round limit exceeded in rooted async")
@@ -555,14 +561,14 @@ def rooted_async(G, agents, root_node, max_rounds):
             _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents, round_number)
             round_number+=1
             if not A_unsettled:
-                psi_v.sibling = amin.siblingDetails
+                psi_v.sibling = siblingDetails
                 break
         psi_v = agents[psi_v_id]
         amin.prevID = psi_v.ID
         k = len(A)
         delta_v = G.degree[v]
         if delta_v >= k - 1:
-            print("shortcut is bad")
+            print("shortcut taken")
             _, rounds_max = parallel_probe(G, agents, v, agents[psi_v_id], A_scout, round_number)
             round_number+=rounds_max
             probe_items = sorted(agents[psi_v_id].probeResultsByPort.items(), key=lambda kv: kv[0])
@@ -590,17 +596,17 @@ def rooted_async(G, agents, root_node, max_rounds):
         if psi_v.state == "settledScout":
             A_vacated.add(psi_v.ID)
             A_scout = set(A_unsettled) | set(A_vacated)
-
+        
         if nextPort is not None:
             psi_v.recentPort = nextPort
             amin.childPort = nextPort
-            psi_v.sibling = amin.siblingDetails
-            amin.siblingDetails = None
             if psi_v.recentChild is None:
+                psi_v.sibling = siblingDetails
+                siblingDetails = None
                 psi_v.recentChild = nextPort
             else:
-                amin.siblingDetails = amin.childDetails
-                amin.childDetails = None
+                siblingDetails = childDetails
+                childDetails = None
                 psi_v.recentChild = nextPort
             w = _move_group(G, agents, A_scout, v, nextPort, round_number)
             _snapshot(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents, round_number)
@@ -616,9 +622,10 @@ def rooted_async(G, agents, root_node, max_rounds):
                     raise RuntimeError(
                         f"Stuck at root v={v} with nextPort=None but A_unsettled still nonempty: {sorted(A_unsettled)}"
                     )
-            amin.childDetails = (psi_v.ID, psi_v.portAtParent)
-            psi_v.sibling = amin.siblingDetails
-            amin.siblingDetails = None
+            childDetails = (psi_v.ID, psi_v.portAtParent)
+            if psi_v.recentChild is None:
+                psi_v.sibling = siblingDetails
+            siblingDetails = None
             amin.childPort = None
             psi_v.recentPort = psi_v.parentPort
             _move_group(G, agents, A_scout, v, psi_v.parentPort, round_number)
@@ -631,6 +638,8 @@ def rooted_async(G, agents, root_node, max_rounds):
 
 
 def run_simulation(G, agents, max_rounds=-1):
+    if len(agents)>len(G):
+        raise RuntimeError("Agents should not be more than nodes")
     max_rounds = 200*len(agents)
     simmer.clearr()
     for u in G.nodes():
@@ -641,10 +650,10 @@ def run_simulation(G, agents, max_rounds=-1):
         G.nodes[a.node]["agents"].add(aid)
 
     root_node = agents[sorted(agents.keys())[0]].node #For rooted only
-    # rooted_async(G, agents, root_node, max_rounds)
-    try:
-        rooted_async(G, agents, root_node, max_rounds)
-    except:
-        pass
+    rooted_async(G, agents, root_node, max_rounds)
+    # try:
+    #     rooted_async(G, agents, root_node, max_rounds)
+    # except:
+    #     pass
 
     return (simmer.all_positions, simmer.all_statuses, simmer.all_node_states, simmer.all_homes, simmer.all_tree_edges)

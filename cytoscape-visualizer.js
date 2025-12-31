@@ -652,12 +652,22 @@ export function drawCytoscape(containerId, originalData) {
         selector: "edge.tree-edge",
         style: {
           width: 2,
-          "line-color": isDark ? "#22c55e" : "#16a34a",   // different from normal edges
+          "line-color": isDark ? "#22c55e" : "#16a34a",
           "line-style": "solid",
-          "source-label": "",     // hide port labels for overlay edges
+          opacity: 1,
+
+          // hide labels on overlay
+          "source-label": "",
           "target-label": "",
-          "z-index": 9999,        // keep them on top
-          opacity: 0.95,
+
+          // --- NEW: arrow ---
+          "target-arrow-shape": "triangle",
+          "target-arrow-color": isDark ? "#22c55e" : "#16a34a",
+          "target-arrow-fill": "filled",
+          "arrow-scale": 0.7,
+          "target-distance-from-node": 0,
+          "curve-style": "straight",
+          "z-index": 9999,
         },
       },
     ],
