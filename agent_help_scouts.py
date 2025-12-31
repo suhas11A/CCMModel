@@ -445,13 +445,10 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og_
 
 
 def retrace(G, agents, A_vacated, round_number):
-    frame = inspect.currentframe().f_back
-    info = inspect.getframeinfo(frame)
-    print(f"Called retrace from line {info.lineno} in function {info.function}")
+    _snapshot("retrace:enter", G, agents, round_number)
     print(A_vacated)
     for a in A_vacated:
         print(agents[a].home)
-    _snapshot("retrace:enter", G, agents, round_number)
     round_number+=1
 
     while A_vacated:
@@ -478,7 +475,7 @@ def retrace(G, agents, A_vacated, round_number):
             if psi_v.recentChild == amin.arrivalPort:
                 if amin.siblingDetails is None:
                     psi_v.recentChild = None
-                    amin.nextAgentID, amin.nextPort = psi_v.parentID, psi_v.portAtParent
+                    amin.nextAgentID, amin.nextPort = psi_v.parentID, psi_v.parentPort
                     amin.siblingDetails = psi_v.sibling
                     if (amin.nextPort is None):
                         print(A_vacated)
@@ -558,6 +555,7 @@ def rooted_async(G, agents, root_node):
             _snapshot(f"rooted_async:settled(psi={psi_v_id},v={v})", G, agents, round_number)
             round_number+=1
             if not A_unsettled:
+                psi_v.sibling = amin.siblingDetails
                 break
         psi_v = agents[psi_v_id]
         amin.prevID = psi_v.ID
@@ -579,8 +577,6 @@ def rooted_async(G, agents, root_node):
                 round_number+=1
                 break
 
-        psi_v.sibling = amin.siblingDetails
-        amin.siblingDetails = None
         nextPort, rounds_max = parallel_probe(G, agents, v, psi_v, A_scout, round_number)
         round_number+=rounds_max
         print(psi_v.ID)
@@ -599,6 +595,7 @@ def rooted_async(G, agents, root_node):
         if nextPort is not None:
             psi_v.recentPort = nextPort
             amin.childPort = nextPort
+            psi_v.sibling = amin.siblingDetails
             if psi_v.recentChild is None:
                 psi_v.recentChild = nextPort
             else:
@@ -608,7 +605,6 @@ def rooted_async(G, agents, root_node):
             w = _move_group(G, agents, A_scout, v, nextPort, round_number)
             _snapshot(f"rooted_async:move_forward(v={v},p={nextPort})", G, agents, round_number)
             round_number+=1
-            amin.childPort = nextPort  ################
             # psi_w_id = _xi_id(G, w, exclude_ids=set(), agents=agents)
             # if psi_w_id is not None:
             #     psi_w = agents[psi_w_id]
@@ -621,6 +617,7 @@ def rooted_async(G, agents, root_node):
                         f"Stuck at root v={v} with nextPort=None but A_unsettled still nonempty: {sorted(A_unsettled)}"
                     )
             amin.childDetails = (psi_v.ID, psi_v.portAtParent)
+            amin.siblingDetails = None
             amin.childPort = None
             psi_v.recentPort = psi_v.parentPort
             _move_group(G, agents, A_scout, v, psi_v.parentPort, round_number)
