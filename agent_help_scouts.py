@@ -67,7 +67,6 @@ def _snapshot(label, G, agents, round_number, agent_id=-1):
         if isinstance(container, (list, tuple)):
             idx = _agent_index_in_arr(aid)
             return container[idx]
-        raise TypeError(f"Unsupported container type: {type(container)}")
 
     def _set_agent_value(container, aid, value):
         if isinstance(container, dict):
@@ -82,7 +81,6 @@ def _snapshot(label, G, agents, round_number, agent_id=-1):
             idx = _agent_index_in_arr(aid)
             tmp[idx] = value
             return tuple(tmp)
-        raise TypeError(f"Unsupported container type: {type(container)}")
 
     def _update_label_at(idx, new_label):
         simmer.all_positions[idx]   = (new_label, simmer.all_positions[idx][1])
@@ -451,8 +449,9 @@ def retrace(G, agents, A_vacated, round_number):
     _snapshot("retrace:enter", G, agents, round_number)
     print(A_vacated)
     for a in A_vacated:
-        print(agents[a].home)
+        agents[a].siblingDetails = None
     round_number+=1
+    siblingDetails = None
 
     while A_vacated:
         amin_id = min(A_vacated)
@@ -462,7 +461,6 @@ def retrace(G, agents, A_vacated, round_number):
         psi_v_id = xi_v_id
         if xi_v_id is None:
             target_id = amin.nextAgentID
-            print(target_id)
             a = agents[target_id]
             a.state = "settled"
             A_vacated.discard(target_id)
@@ -476,16 +474,15 @@ def retrace(G, agents, A_vacated, round_number):
         psi_v = agents[psi_v_id]
         if psi_v.recentChild is not None:
             if psi_v.recentChild == amin.arrivalPort:
-                if amin.siblingDetails is None:
+                if siblingDetails is None:
                     psi_v.recentChild = None
                     amin.nextAgentID, amin.nextPort = psi_v.parentID, psi_v.parentPort
-                    amin.siblingDetails = psi_v.sibling
+                    siblingDetails = psi_v.sibling
                     if (amin.nextPort is None):
-                        print(A_vacated)
                         raise RuntimeError(f"{A_vacated} -- {amin.ID} nextport is None, psi_v is {psi_v.ID}, home is {psi_v.home}, stat is {psi_v.state}")
                 else:
-                    amin.nextAgentID, amin.nextPort = amin.siblingDetails
-                    amin.siblingDetails = None
+                    amin.nextAgentID, amin.nextPort = siblingDetails
+                    siblingDetails = None
                     psi_v.recentChild = amin.nextPort
             else:
                 amin.nextPort = psi_v.recentChild
@@ -501,8 +498,10 @@ def retrace(G, agents, A_vacated, round_number):
             parentID = psi_v.parentID
             amin.nextAgentID = parentID
             amin.nextPort = psi_v.parentPort
-            amin.siblingDetails = psi_v.sibling
+            siblingDetails = psi_v.sibling
 
+        if round_number>370:
+            raise RuntimeError("Round limit exceeded")
         A_vacated.discard(psi_v.ID)
         psi_v.state = "settled"
         _move_group(G, agents, A_vacated, v, amin.nextPort, round_number)
@@ -522,10 +521,8 @@ def rooted_async(G, agents, root_node):
     while A_unsettled:
         v = agents[min(A_unsettled | A_vacated)].node
         A_scout = set(A_unsettled) | set(A_vacated)
-        print(A_scout)
         amin = agents[min(A_scout)]
         psi_v_id = _xi_id(G, v, {}, agents)
-        print(psi_v_id, "          ", v)
         if psi_v_id is None:
             candidates = [aid for aid in A_unsettled if agents[aid].node == v]
             if not candidates:
@@ -582,7 +579,6 @@ def rooted_async(G, agents, root_node):
 
         nextPort, rounds_max = parallel_probe(G, agents, v, psi_v, A_scout, round_number)
         round_number+=rounds_max
-        print(psi_v.ID)
         scout_results = list(psi_v.probeResultsByPort.values())
         update_node_type_after_probe(G, v, psi_v, scout_results)
         psi_v.state, rounds_max = can_vacate(G, agents, v, psi_v, A_vacated, round_number)
@@ -599,6 +595,7 @@ def rooted_async(G, agents, root_node):
             psi_v.recentPort = nextPort
             amin.childPort = nextPort
             psi_v.sibling = amin.siblingDetails
+            amin.siblingDetails = None
             if psi_v.recentChild is None:
                 psi_v.recentChild = nextPort
             else:
@@ -644,9 +641,9 @@ def run_simulation(G, agents, max_rounds=-1):
         G.nodes[a.node]["agents"].add(aid)
 
     root_node = agents[sorted(agents.keys())[0]].node #For rooted only
-    # try:
-    rooted_async(G, agents, root_node)
-    # except:
-    #     pass
+    try:
+        rooted_async(G, agents, root_node)
+    except:
+        pass
 
     return (simmer.all_positions, simmer.all_statuses, simmer.all_node_states, simmer.all_homes, simmer.all_tree_edges)

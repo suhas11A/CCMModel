@@ -6,8 +6,8 @@ import agent_help_scouts
 
 def main():
     # ─── demo topology ───
-    nodes  = 10
-    agent_count = 10
+    nodes  = 26
+    agent_count = 26
 
     G = graph_utils.create_port_labeled_graph(nodes, 4, 42)
     graph_utils.randomize_ports(G, 42)
