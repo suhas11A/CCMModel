@@ -447,9 +447,6 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og_
 
 def retrace(G, agents, A_vacated, round_number, max_rounds):
     _snapshot("retrace:enter", G, agents, round_number)
-    print(A_vacated)
-    for a in A_vacated:
-        agents[a].siblingDetails = None
     round_number+=1
     siblingDetails = None
 
@@ -506,6 +503,7 @@ def retrace(G, agents, A_vacated, round_number, max_rounds):
         psi_v.state = "settled"
         _move_group(G, agents, A_vacated, v, amin.nextPort, round_number)
         round_number+=1
+        # print(agents[2].sibling)
 
     _snapshot("retrace:exit", G, agents, round_number)
     round_number+=1
@@ -619,6 +617,7 @@ def rooted_async(G, agents, root_node, max_rounds):
                         f"Stuck at root v={v} with nextPort=None but A_unsettled still nonempty: {sorted(A_unsettled)}"
                     )
             amin.childDetails = (psi_v.ID, psi_v.portAtParent)
+            psi_v.sibling = amin.siblingDetails
             amin.siblingDetails = None
             amin.childPort = None
             psi_v.recentPort = psi_v.parentPort

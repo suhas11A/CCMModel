@@ -1,6 +1,6 @@
 # graph_utils.py
 
-import networkx as nx
+import networkx as nx # type: ignore
 import random
 
 def create_port_labeled_graph(nodes, max_degree, seed):
