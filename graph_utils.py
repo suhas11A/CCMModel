@@ -6,7 +6,9 @@ import random
 def create_port_labeled_graph(nodes, max_degree, seed):
     attempt = 0
     while True:
-        G = nx.random_regular_graph(max_degree, nodes, seed=seed + attempt)
+        # G = nx.random_regular_graph(max_degree, nodes, seed=seed + attempt)
+        m = (nodes * max_degree) // 2
+        G = nx.gnm_random_graph(nodes, m, seed=seed + attempt)
         if nx.is_connected(G):
             break
         attempt += 1

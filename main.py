@@ -20,8 +20,6 @@ def main():
     for a in agents:
         state = a.state
         print(f"  A{a.ID} @ node {a.node:>2}  →  {state}")
-        print(f"  A{a.ID} @ node {a.home}  →  {state}")
-        print()
 
 
 if __name__ == "__main__":

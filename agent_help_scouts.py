@@ -441,11 +441,11 @@ def parallel_probe(G, agents: List["Agent"], x, psi_x, A_scout, round_number_og_
         else:
             psi_x.probeResult = best
 
-    _snapshot(f"parallel_probe:exit", G, agents, round_number_og+rounds_max)
+    _snapshot(f"parallel_probe:exit", G, agents, round_number_og_og+rounds_max)
     return (psi_x.probeResult[0] if psi_x.probeResult is not None else None), (rounds_max+2)
 
 
-def retrace(G, agents, A_vacated, round_number):
+def retrace(G, agents, A_vacated, round_number, max_rounds):
     _snapshot("retrace:enter", G, agents, round_number)
     print(A_vacated)
     for a in A_vacated:
@@ -454,6 +454,8 @@ def retrace(G, agents, A_vacated, round_number):
     siblingDetails = None
 
     while A_vacated:
+        if round_number>max_rounds:
+            raise RuntimeError("Round limit exceeded in retrace")
         amin_id = min(A_vacated)
         amin = agents[amin_id]
         v = amin.node
@@ -500,8 +502,6 @@ def retrace(G, agents, A_vacated, round_number):
             amin.nextPort = psi_v.parentPort
             siblingDetails = psi_v.sibling
 
-        if round_number>370:
-            raise RuntimeError("Round limit exceeded")
         A_vacated.discard(psi_v.ID)
         psi_v.state = "settled"
         _move_group(G, agents, A_vacated, v, amin.nextPort, round_number)
@@ -512,13 +512,15 @@ def retrace(G, agents, A_vacated, round_number):
     return round_number
 
 
-def rooted_async(G, agents, root_node):
+def rooted_async(G, agents, root_node, max_rounds):
     _snapshot(f"rooted_async:enter(root={root_node})", G, agents, 0)
     round_number = 1
     A = set(agents.keys())
     A_unsettled = set(A)
     A_vacated = set()
     while A_unsettled:
+        if round_number>max_rounds:
+            raise RuntimeError("Round limit exceeded in rooted async")
         v = agents[min(A_unsettled | A_vacated)].node
         A_scout = set(A_unsettled) | set(A_vacated)
         amin = agents[min(A_scout)]
@@ -624,14 +626,13 @@ def rooted_async(G, agents, root_node):
             _snapshot(f"rooted_async:backtrack(v={v},p={psi_v.parentPort})", G, agents, round_number)
             round_number+=1
 
-    round_number = retrace(G, agents, A_vacated, round_number)
+    round_number = retrace(G, agents, A_vacated, round_number, max_rounds)
     _snapshot("rooted_async:exit", G, agents, round_number)
     round_number+=1
 
 
 def run_simulation(G, agents, max_rounds=-1):
-    if max_rounds==-1:
-        max_rounds = 20*len(agents)
+    max_rounds = 200*len(agents)
     simmer.clearr()
     for u in G.nodes():
         G.nodes[u]["agents"] = set()
@@ -641,8 +642,9 @@ def run_simulation(G, agents, max_rounds=-1):
         G.nodes[a.node]["agents"].add(aid)
 
     root_node = agents[sorted(agents.keys())[0]].node #For rooted only
+    # rooted_async(G, agents, root_node, max_rounds)
     try:
-        rooted_async(G, agents, root_node)
+        rooted_async(G, agents, root_node, max_rounds)
     except:
         pass
 
